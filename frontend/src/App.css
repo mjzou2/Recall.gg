@@ -1,42 +1,233 @@
+:root {
+  font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  color: #0f1629;
+  background: #f6f7fb;
+}
+
+body {
+  margin: 0;
+}
+
 #root {
-  max-width: 1280px;
+  max-width: 1200px;
   margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
+  padding: 2.5rem 1.5rem 4rem;
 }
 
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
-}
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
-}
-.logo.react:hover {
-  filter: drop-shadow(0 0 2em #61dafbaa);
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
 }
 
-@keyframes logo-spin {
-  from {
-    transform: rotate(0deg);
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+h1 {
+  margin: 0.25rem 0;
+  font-size: 2rem;
+  letter-spacing: -0.02em;
+}
+
+h2 {
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+
+.lede {
+  margin: 0.25rem 0 0;
+  color: #3b4763;
+  max-width: 720px;
+}
+
+.eyebrow {
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  color: #6c7ba6;
+  margin: 0;
+}
+
+.status {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.badge {
+  padding: 0.45rem 0.75rem;
+  border-radius: 0.75rem;
+  background: #e8f2ff;
+  color: #1c3f80;
+  font-weight: 600;
+}
+
+.badge.danger {
+  background: #ffe8ea;
+  color: #b2273c;
+}
+
+.panel {
+  background: #ffffff;
+  border: 1px solid #e2e7f1;
+  border-radius: 14px;
+  padding: 1.25rem 1.5rem;
+  box-shadow: 0 14px 40px -24px rgba(24, 39, 75, 0.3);
+}
+
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  text-align: left;
+  font-weight: 600;
+  color: #1c274c;
+}
+
+.field input {
+  padding: 0.75rem 0.85rem;
+  border-radius: 10px;
+  border: 1px solid #cbd5e4;
+  font-size: 1rem;
+}
+
+.field input:focus {
+  outline: 2px solid #2f6bff;
+  border-color: #2f6bff;
+}
+
+.field.file input {
+  padding: 0.55rem 0.6rem;
+}
+
+.actions {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+button {
+  background: #1c3f80;
+  color: white;
+  border: none;
+  padding: 0.75rem 1rem;
+  border-radius: 10px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 120ms ease, box-shadow 120ms ease, opacity 120ms ease;
+  box-shadow: 0 10px 30px -18px rgba(28, 63, 128, 0.7);
+}
+
+button:hover {
+  transform: translateY(-1px);
+}
+
+button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.ghost {
+  background: transparent;
+  color: #1c3f80;
+  border: 1px dashed #a7b7d8;
+  box-shadow: none;
+}
+
+.hint {
+  color: #6c7ba6;
+  font-size: 0.9rem;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1rem;
+}
+
+.session-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.session-card {
+  text-align: left;
+  border: 1px solid #dbe3f1;
+  border-radius: 12px;
+  padding: 0.9rem 1rem;
+  background: #f9fbff;
+  color: inherit;
+  box-shadow: none;
+}
+
+.session-card.active {
+  border-color: #2f6bff;
+  box-shadow: 0 8px 24px -18px rgba(47, 107, 255, 0.7);
+}
+
+.session-title {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.95rem;
+}
+
+.session-title span {
+  color: #6c7ba6;
+  font-weight: 500;
+}
+
+.chunk-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.chunk {
+  border: 1px solid #e2e7f1;
+  border-radius: 12px;
+  padding: 0.75rem 0.9rem;
+  background: linear-gradient(135deg, #f9fbff, #f2f7ff);
+}
+
+.chunk-times {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+  font-weight: 700;
+  color: #1c3f80;
+  margin-bottom: 0.35rem;
+}
+
+@media (max-width: 720px) {
+  header {
+    flex-direction: column;
   }
-  to {
-    transform: rotate(360deg);
+
+  .panel-header {
+    flex-direction: column;
+    align-items: flex-start;
   }
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  a:nth-of-type(2) .logo {
-    animation: logo-spin infinite 20s linear;
-  }
-}
-
-.card {
-  padding: 2em;
-}
-
-.read-the-docs {
-  color: #888;
 }
