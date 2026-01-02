@@ -1,0 +1,18 @@
+# Python
+backend/.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Node
+frontend/node_modules/
+frontend/dist/
+
+# App data / uploads
+backend/data/
+backend/uploads/
+*.sqlite
+
+# OS/IDE
+.vscode/
+.DS_Store
