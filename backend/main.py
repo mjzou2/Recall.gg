@@ -79,7 +79,7 @@ class ChunkResponse(BaseModel):
     end_ms: int
     text: str
 
-app = FastAPI(title="vodcomms MVP")
+app = FastAPI(title="RECALL.GG", description="Esports comms search MVP")
 
 app.add_middleware(
     CORSMiddleware,

@@ -141,7 +141,7 @@ function App() {
     <div className="page">
       <header>
         <div>
-          <p className="eyebrow">vodcomms · local-first</p>
+          <p className="eyebrow">RECALL.GG · local-first</p>
           <h1>Scrim transcripts in one place</h1>
           <p className="lede">
             Create a session, upload a VOD or audio file, and generate dummy
