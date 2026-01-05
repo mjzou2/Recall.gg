@@ -6,6 +6,8 @@ import uuid
 from pathlib import Path
 from typing import Dict, List, Optional
 
+from faster_whisper import WhisperModel
+
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -230,6 +232,68 @@ def extract_audio(session_id: str, media_path: Path) -> Path:
     return audio_path
 
 
+_whisper_model: Optional[WhisperModel] = None
+
+
+def get_transcriber() -> WhisperModel:
+    global _whisper_model
+    if _whisper_model is None:
+        _whisper_model = WhisperModel(
+            "base",
+            device="cpu",
+            compute_type="int8",
+        )
+    return _whisper_model
+
+
+def transcribe_audio(audio_path: Path) -> List[Dict]:
+    try:
+        segments, _info = get_transcriber().transcribe(
+            str(audio_path),
+            vad_filter=True,
+        )
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500, detail=f"Transcription failed: {exc}"
+        ) from exc
+
+    results: List[Dict] = []
+    for segment in segments:
+        text = segment.text.strip()
+        if not text:
+            continue
+        results.append(
+            {
+                "start_ms": int(segment.start * 1000),
+                "end_ms": int(segment.end * 1000),
+                "text": text,
+            }
+        )
+    return results
+
+
+def merge_segments(segments: List[Dict], max_chunk_ms: int = 35000) -> List[Dict]:
+    merged: List[Dict] = []
+    current: Optional[Dict] = None
+
+    for segment in segments:
+        if current is None:
+            current = segment.copy()
+            continue
+
+        if segment["end_ms"] - current["start_ms"] <= max_chunk_ms:
+            current["end_ms"] = segment["end_ms"]
+            current["text"] = f"{current['text']} {segment['text']}"
+        else:
+            merged.append(current)
+            current = segment.copy()
+
+    if current is not None:
+        merged.append(current)
+
+    return merged
+
+
 @app.post("/sessions/{session_id}/process")
 def process_media(session_id: str) -> Dict:
     session = fetch_session(session_id)
@@ -245,39 +309,30 @@ def process_media(session_id: str) -> Dict:
 
     audio_path = extract_audio(session_id, media_file)
 
-    dummy_chunks = [
+    segments = transcribe_audio(audio_path)
+    chunks = merge_segments(segments) if segments else []
+
+    chunk_rows = [
         (
             str(uuid.uuid4()),
             session_id,
-            0,
-            15000,
-            "Intro and setup for the round.",
-        ),
-        (
-            str(uuid.uuid4()),
-            session_id,
-            15000,
-            30000,
-            "Key play-by-play comms.",
-        ),
-        (
-            str(uuid.uuid4()),
-            session_id,
-            30000,
-            45000,
-            "Post-round recap and callouts.",
-        ),
+            chunk["start_ms"],
+            chunk["end_ms"],
+            chunk["text"],
+        )
+        for chunk in chunks
     ]
 
     with sqlite3.connect(DB_PATH) as conn:
         conn.execute("DELETE FROM chunks WHERE session_id = ?", (session_id,))
-        conn.executemany(
-            """
-            INSERT INTO chunks(id, session_id, start_ms, end_ms, text)
-            VALUES (?, ?, ?, ?, ?)
-            """,
-            dummy_chunks,
-        )
+        if chunk_rows:
+            conn.executemany(
+                """
+                INSERT INTO chunks(id, session_id, start_ms, end_ms, text)
+                VALUES (?, ?, ?, ?, ?)
+                """,
+                chunk_rows,
+            )
         conn.execute(
             "UPDATE sessions SET status = 'ready', audio_path = ? WHERE id = ?",
             (str(audio_path), session_id),

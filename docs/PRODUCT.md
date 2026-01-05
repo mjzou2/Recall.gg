@@ -53,4 +53,10 @@ Goal: make review faster, clearer, and less argumentative.
 - A coach can find “every time we said reset/baron/turn” across scrims in seconds
 - Review becomes faster: fewer minutes scrubbing, more time coaching
 - Disputes resolved quickly: “who called wh
+## Run + verify transcription
+1) Backend: `cd backend && source .venv/bin/activate && pip install faster-whisper && python -m uvicorn main:app --reload --port 8000`
+2) Create a session: `curl -X POST http://localhost:8000/sessions -H "Content-Type: application/json" -d '{}'`
+3) Upload media: `curl -F "file=@/full/path/to/audio-or-video" http://localhost:8000/sessions/<session_id>/media`
+4) Process + transcribe: `curl -X POST http://localhost:8000/sessions/<session_id>/process`
+5) Verify output: `curl http://localhost:8000/sessions/<session_id>` should show `audio_path` set and `chunks` populated (start/end ms + text). Launch the frontend to confirm chunks render in the UI.
 ::contentReference[oaicite:0]{index=0}

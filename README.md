@@ -3,6 +3,7 @@
 ### System
 - ffmpeg (required for video → audio extraction)
 - sqlite3 (optional, for inspecting the DB)
+- faster-whisper (Python package for transcription; install in your virtualenv)
 
 Install:
 ```bash
