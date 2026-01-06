@@ -1,4 +1,5 @@
 import datetime
+import os
 import shutil
 import sqlite3
 import subprocess
@@ -238,10 +239,15 @@ _whisper_model: Optional[WhisperModel] = None
 def get_transcriber() -> WhisperModel:
     global _whisper_model
     if _whisper_model is None:
+        device = os.environ.get("TRANSCRIBE_DEVICE", "cuda").lower()
+        is_cpu = device == "cpu"
+        compute_type = "int8" if is_cpu else "float16"
+        model_name = os.environ.get("WHISPER_MODEL", "base.en")
+
         _whisper_model = WhisperModel(
-            "base",
-            device="cpu",
-            compute_type="int8",
+            model_name,
+            device="cpu" if is_cpu else "cuda",
+            compute_type=compute_type,
         )
     return _whisper_model
 
