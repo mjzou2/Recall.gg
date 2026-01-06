@@ -1,25 +1,77 @@
+# RECALL.GG (local-first MVP)
+
+Scrim/VOD comms transcription + timestamped chunking + search (local-first MVP).
+
 ## Dependencies
 
-### System
+### System (required)
 - ffmpeg (required for video → audio extraction)
 - sqlite3 (optional, for inspecting the DB)
-- faster-whisper (Python package for transcription; install in your virtualenv)
 
 Install:
-```bash
-sudo apt update
-sudo apt install -y ffmpeg sqlite3
+    sudo apt update
+    sudo apt install -y ffmpeg sqlite3
+
+### Python (required)
+This project uses faster-whisper for transcription (installed in your virtualenv).
+
+Note: if you use GPU transcription, you also need system CUDA/cuDNN (see below).
+
+### Optional: GPU transcription (CUDA)
+If you want transcription to run on your NVIDIA GPU:
+
+- WSL2: NVIDIA driver on Windows with WSL GPU support
+- Inside Ubuntu (WSL): CUDA Toolkit 12.x (example: 12.9) + cuDNN for CUDA 12 (example: cuDNN 9)
+
+Common packages (after you’ve configured the NVIDIA CUDA apt repo on your system):
+    sudo apt update
+    sudo apt install -y cuda-toolkit-12-9 cudnn9-cuda-12
+
+## Configuration (env vars)
+
+Backend transcription settings:
+
+- TRANSCRIBE_DEVICE
+  - cuda (default, if your machine supports it)
+  - cpu (fallback)
+- WHISPER_MODEL
+  - default: base.en
+  - examples: small.en, medium.en
+
+### .env.example (recommended)
+Create a file named .env.example at the repo root:
+
+    TRANSCRIBE_DEVICE=cuda
+    WHISPER_MODEL=base.en
+
+(Your real .env should be gitignored.)
 
 ## Run backend
 
-cd .../vodcomms/backend
+From repo root:
+    cd ~/projects/vodcomms
+    source .venv/bin/activate
+    cd backend
+    python -m uvicorn main:app --reload --port 8000
 
-source .venv/bin/activate
+Force CPU mode:
+    cd ~/projects/vodcomms
+    source .venv/bin/activate
+    cd backend
+    TRANSCRIBE_DEVICE=cpu python -m uvicorn main:app --reload --port 8000
 
-python -m uvicorn main:app --reload --port 8000
+Backend API docs:
+- http://localhost:8000/docs
 
 ## Run frontend
 
-cd .../vodcomms/frontend
+    cd ~/projects/vodcomms/frontend
+    npm install
+    npm run dev
 
-npm run dev
+Frontend dev server:
+- http://localhost:5173
+
+## Notes
+- The app stores transcripts/chunks locally in: backend/data/app.sqlite
+- Uploaded media and extracted audio are stored under: backend/data/
