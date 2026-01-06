@@ -16,3 +16,5 @@ backend/uploads/
 # OS/IDE
 .vscode/
 .DS_Store
+
+backend/cuda-keyring_1.1-1_all.deb

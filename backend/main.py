@@ -118,6 +118,10 @@ class ChunkResponse(BaseModel):
     end_ms: int
     text: str
 
+class SearchRequest(BaseModel):
+    query: str
+    limit: int = 20
+
 app = FastAPI(title="RECALL.GG", description="Esports comms search MVP")
 
 app.add_middleware(
@@ -203,6 +207,44 @@ def get_session(session_id: str) -> Dict:
 def get_chunks(session_id: str) -> List[ChunkResponse]:
     fetch_session(session_id)
     return [ChunkResponse(**c) for c in fetch_chunks(session_id)]
+
+@app.post("/sessions/{session_id}/search")
+def search_chunks(session_id: str, payload: SearchRequest) -> Dict[str, List[Dict]]:
+    fetch_session(session_id)
+    query = payload.query.strip()
+    if not query:
+        return {"results": []}
+
+    limit = max(0, min(payload.limit, 50))
+    if limit == 0:
+        return {"results": []}
+
+    with sqlite3.connect(DB_PATH) as conn:
+        conn.row_factory = sqlite3.Row
+        rows = conn.execute(
+            """
+            SELECT c.id, c.start_ms, c.end_ms, c.text
+            FROM chunks_fts f
+            JOIN chunks c ON c.id = f.rowid
+            WHERE f.session_id = ?
+              AND chunks_fts MATCH ?
+            ORDER BY bm25(chunks_fts)
+            LIMIT ?
+            """,
+            (session_id, query, limit),
+        ).fetchall()
+
+    results = [
+        {
+            "id": row["id"],
+            "start_ms": row["start_ms"],
+            "end_ms": row["end_ms"],
+            "text": row["text"],
+        }
+        for row in rows
+    ]
+
+    return {"results": results}
 
 @app.post("/sessions/{session_id}/media")
 async def upload_media(session_id: str, file: UploadFile = File(...)) -> Dict:
