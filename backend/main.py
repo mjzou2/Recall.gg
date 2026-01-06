@@ -55,6 +55,42 @@ def init_storage() -> None:
             CREATE INDEX IF NOT EXISTS idx_chunks_session ON chunks(session_id)
         """
         )
+        conn.execute(
+            """
+            CREATE VIRTUAL TABLE IF NOT EXISTS chunks_fts USING fts5(
+                text,
+                session_id UNINDEXED,
+                content='chunks',
+                content_rowid='id'
+            )
+        """
+        )
+        conn.execute(
+            """
+            CREATE TRIGGER IF NOT EXISTS chunks_ai AFTER INSERT ON chunks BEGIN
+                INSERT INTO chunks_fts(rowid, text, session_id)
+                VALUES (new.id, new.text, new.session_id);
+            END;
+        """
+        )
+        conn.execute(
+            """
+            CREATE TRIGGER IF NOT EXISTS chunks_ad AFTER DELETE ON chunks BEGIN
+                INSERT INTO chunks_fts(chunks_fts, rowid, text, session_id)
+                VALUES ('delete', old.id, old.text, old.session_id);
+            END;
+        """
+        )
+        conn.execute(
+            """
+            CREATE TRIGGER IF NOT EXISTS chunks_au AFTER UPDATE ON chunks BEGIN
+                INSERT INTO chunks_fts(chunks_fts, rowid, text, session_id)
+                VALUES ('delete', old.id, old.text, old.session_id);
+                INSERT INTO chunks_fts(rowid, text, session_id)
+                VALUES (new.id, new.text, new.session_id);
+            END;
+        """
+        )
 
 
 def row_to_dict(row: sqlite3.Row) -> Dict:
