@@ -24,6 +24,7 @@ function App() {
   const [isCreating, setIsCreating] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
   const [isProcessing, setIsProcessing] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
 
   useEffect(() => {
     loadSessions()
@@ -137,6 +138,40 @@ function App() {
     } finally {
       setIsProcessing(false)
     }
+  }
+
+  const handleSearch = async () => {
+    if (!sessionId) return
+    const trimmed = searchQuery.trim()
+    if (!trimmed) {
+      setSearchQuery('')
+      await loadSessionDetails(sessionId)
+      setStatus('Search cleared')
+      return
+    }
+    setStatus('Searching...')
+    setError('')
+    try {
+      const res = await fetch(`${API_BASE}/sessions/${sessionId}/search`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: trimmed, limit: 50 }),
+      })
+      if (!res.ok) throw new Error('Search failed')
+      const data = await res.json()
+      setChunks(data.results || [])
+      setStatus(`Search returned ${data.results?.length ?? 0} results`)
+    } catch (err) {
+      setError(err.message)
+    }
+  }
+
+  const handleClearSearch = async () => {
+    setSearchQuery('')
+    if (sessionId) {
+      await loadSessionDetails(sessionId)
+    }
+    setStatus('Search cleared')
   }
 
   return (
@@ -268,6 +303,24 @@ function App() {
         </div>
 
         <SessionDetails session={sessionDetails} />
+
+        {(sessionId || sessionDetails) && (
+          <div className="panel">
+            <div className="panel-header">
+              <div>
+                <p className="eyebrow">Search</p>
+                <h2>Keyword lookup</h2>
+              </div>
+            </div>
+            <div className="stack">
+              <input type="text" placeholder={'reset / baron / "we should"'} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+              <div className="actions">
+                <button type="button" onClick={handleSearch}>Search</button>
+                <button type="button" className="ghost" onClick={handleClearSearch}>Clear</button>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="panel">
           <div className="panel-header">
