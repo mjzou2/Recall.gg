@@ -25,6 +25,8 @@ function App() {
   const [isUploading, setIsUploading] = useState(false)
   const [isProcessing, setIsProcessing] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
+  const [isSearching, setIsSearching] = useState(false)
+  const [lastQuery, setLastQuery] = useState('')
 
   useEffect(() => {
     loadSessions()
@@ -145,6 +147,8 @@ function App() {
     const trimmed = searchQuery.trim()
     if (!trimmed) {
       setSearchQuery('')
+      setIsSearching(false)
+      setLastQuery('')
       await loadSessionDetails(sessionId)
       setStatus('Search cleared')
       return
@@ -160,6 +164,8 @@ function App() {
       if (!res.ok) throw new Error('Search failed')
       const data = await res.json()
       setChunks(data.results || [])
+      setIsSearching(true)
+      setLastQuery(trimmed)
       setStatus(`Search returned ${data.results?.length ?? 0} results`)
     } catch (err) {
       setError(err.message)
@@ -168,6 +174,8 @@ function App() {
 
   const handleClearSearch = async () => {
     setSearchQuery('')
+    setIsSearching(false)
+    setLastQuery('')
     if (sessionId) {
       await loadSessionDetails(sessionId)
     }
@@ -334,6 +342,13 @@ function App() {
           )}
           {sessionId && chunks.length === 0 && (
             <p className="hint">No chunks yet. Process the uploaded file.</p>
+          )}
+          {sessionId && (
+            <p className="hint">
+              {isSearching
+                ? `Results: ${chunks.length} (query: ${lastQuery})`
+                : `Showing all chunks: ${chunks.length}`}
+            </p>
           )}
           <div className="chunk-list">
             {chunks.map((chunk) => (
