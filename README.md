@@ -63,6 +63,18 @@ Force CPU mode:
 Backend API docs:
 - http://localhost:8000/docs
 
+
+## Docker quickstart
+
+From repo root:
+    docker compose up --build
+
+Backend API docs:
+- http://localhost:8000/docs
+
+Data persists under:
+- ./backend/data
+
 ## Run frontend
 
     cd ~/projects/vodcomms/frontend
