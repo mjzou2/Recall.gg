@@ -391,36 +391,53 @@ def process_media(session_id: str) -> Dict:
     if not media_file.exists():
         raise HTTPException(status_code=400, detail="Stored media file is missing.")
 
-    audio_path = extract_audio(session_id, media_file)
-
-    segments = transcribe_audio(audio_path)
-    chunks = merge_segments(segments) if segments else []
-
-    chunk_rows = [
-        (
-            str(uuid.uuid4()),
-            session_id,
-            chunk["start_ms"],
-            chunk["end_ms"],
-            chunk["text"],
-        )
-        for chunk in chunks
-    ]
-
     with sqlite3.connect(DB_PATH) as conn:
-        conn.execute("DELETE FROM chunks WHERE session_id = ?", (session_id,))
-        if chunk_rows:
-            conn.executemany(
-                """
-                INSERT INTO chunks(id, session_id, start_ms, end_ms, text)
-                VALUES (?, ?, ?, ?, ?)
-                """,
-                chunk_rows,
-            )
         conn.execute(
-            "UPDATE sessions SET status = 'ready', audio_path = ? WHERE id = ?",
-            (str(audio_path), session_id),
+            "UPDATE sessions SET status = 'processing', audio_path = NULL WHERE id = ?",
+            (session_id,),
         )
+        conn.execute("DELETE FROM chunks WHERE session_id = ?", (session_id,))
+
+    try:
+        print("Processing: extracting audio")
+        audio_path = extract_audio(session_id, media_file)
+        print("Processing: transcribing audio")
+        segments = transcribe_audio(audio_path)
+        print("Processing: merging segments")
+        chunks = merge_segments(segments) if segments else []
+
+        chunk_rows = [
+            (
+                str(uuid.uuid4()),
+                session_id,
+                chunk["start_ms"],
+                chunk["end_ms"],
+                chunk["text"],
+            )
+            for chunk in chunks
+        ]
+
+        with sqlite3.connect(DB_PATH) as conn:
+            if chunk_rows:
+                conn.executemany(
+                    """
+                    INSERT INTO chunks(id, session_id, start_ms, end_ms, text)
+                    VALUES (?, ?, ?, ?, ?)
+                    """,
+                    chunk_rows,
+                )
+            conn.execute(
+                "UPDATE sessions SET status = 'ready', audio_path = ? WHERE id = ?",
+                (str(audio_path), session_id),
+            )
+    except Exception as exc:
+        with sqlite3.connect(DB_PATH) as conn:
+            conn.execute(
+                "UPDATE sessions SET status = 'failed' WHERE id = ?",
+                (session_id,),
+            )
+        print(f"Processing failed for session {session_id}: {exc}")
+        raise HTTPException(status_code=500, detail="Processing failed") from exc
 
     return {
         "session": session_id,
