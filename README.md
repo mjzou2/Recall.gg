@@ -46,6 +46,25 @@ Create a file named .env.example at the repo root:
 
 (Your real .env should be gitignored.)
 
+## Quickstart (Local Dev)
+
+Backend:
+    cd ~/projects/vodcomms
+    source .venv/bin/activate
+    cd backend
+    python -m uvicorn main:app --reload --port 8000
+
+Backend API docs:
+- http://localhost:8000/docs
+
+Frontend:
+    cd ~/projects/vodcomms/frontend
+    npm install
+    npm run dev
+
+Frontend dev server:
+- http://localhost:5173
+
 ## Run backend
 
 From repo root:
@@ -74,6 +93,11 @@ Backend API docs:
 
 Data persists under:
 - ./backend/data
+
+## Common issues
+- ffmpeg missing: install `ffmpeg` (see Dependencies section).
+- backend port already in use: stop the other process or change `--port 8000`.
+- SQLite DB location: `backend/data/app.sqlite`.
 
 ## Run frontend
 

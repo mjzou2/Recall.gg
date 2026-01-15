@@ -30,6 +30,14 @@ Goal: make review faster, clearer, and less argumentative.
 - Session list + status
 - Session viewer: player + search + results + timeline
 
+## Current MVP 1.0 status
+- Sessions (create/list)
+- Upload media/audio
+- Audio extraction via ffmpeg
+- Transcription via faster-whisper (GPU capable)
+- Chunking into time windows
+- Keyword search via FTS endpoint
+
 **Non-goals**
 - Auth/teams/workspaces
 - Cloud hosting
@@ -48,6 +56,11 @@ Goal: make review faster, clearer, and less argumentative.
 - Login + team workspace
 - Store transcripts/embeddings/notes; VOD remains external link
 - Usage-based ingestion options (local vs API) and/or BYO API key
+
+## Next up
+- Minimal frontend search UI
+- Semantic search
+- Glossary/normalization
 
 ## Success criteria (what “good” looks like)
 - A coach can find “every time we said reset/baron/turn” across scrims in seconds
