@@ -1,7 +1,5 @@
 import { useEffect, useState } from 'react'
 import './App.css'
-import SessionDetails from './components/SessionDetails'
-
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8000'
 
 const formatTime = (ms) => {
@@ -9,6 +7,30 @@ const formatTime = (ms) => {
   const minutes = Math.floor(totalSeconds / 60)
   const seconds = totalSeconds % 60
   return `${minutes}:${seconds.toString().padStart(2, '0')}`
+}
+
+const shortenUrl = (url) => {
+  if (!url) return ''
+  try {
+    const parsed = new URL(url)
+    const tail = parsed.pathname.split('/').filter(Boolean).pop()
+    const fragment = parsed.search || parsed.hash || ''
+    const suffix = tail ? `${tail}${fragment}` : fragment.replace(/^\?/, '')
+    return `${parsed.hostname}${suffix ? `/${suffix}` : ''}`
+  } catch {
+    const trimmed = url.replace(/^https?:\/\//, '')
+    const parts = trimmed.split('/')
+    if (parts.length <= 1) return trimmed
+    const last = parts[parts.length - 1] || parts[parts.length - 2]
+    return `${parts[0]}/${last}`
+  }
+}
+
+const basename = (path) => {
+  if (!path) return ''
+  const normalized = path.split('?')[0]
+  const parts = normalized.split('/')
+  return parts[parts.length - 1] || normalized
 }
 
 function App() {
@@ -27,10 +49,50 @@ function App() {
   const [searchQuery, setSearchQuery] = useState('')
   const [isSearching, setIsSearching] = useState(false)
   const [lastQuery, setLastQuery] = useState('')
+  const [pageIndex, setPageIndex] = useState(0)
+  const [expandedChunkIds, setExpandedChunkIds] = useState(new Set())
+  const [isEditingSession, setIsEditingSession] = useState(false)
+  const [editTitle, setEditTitle] = useState('')
+  const [editYoutubeUrl, setEditYoutubeUrl] = useState('')
+
+  const pageSize = 25
+  const canSearch = Boolean(sessionId)
 
   useEffect(() => {
     loadSessions()
   }, [])
+
+  useEffect(() => {
+    const totalPages = Math.max(1, Math.ceil(chunks.length / pageSize))
+    if (pageIndex > totalPages - 1) {
+      setPageIndex(0)
+    }
+  }, [chunks.length, pageIndex])
+
+  const resetChunkViews = () => {
+    setPageIndex(0)
+    setExpandedChunkIds(new Set())
+  }
+
+  const getPreviewText = (text) => {
+    if (!text) return ''
+    const firstLine = text.split('\n')[0]
+    if (firstLine.length > 140) return `${firstLine.slice(0, 140)}...`
+    if (text.length > firstLine.length) return `${firstLine}...`
+    return firstLine
+  }
+
+  const toggleChunkExpanded = (chunkKey) => {
+    setExpandedChunkIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(chunkKey)) {
+        next.delete(chunkKey)
+      } else {
+        next.add(chunkKey)
+      }
+      return next
+    })
+  }
 
   const loadSessions = async () => {
     try {
@@ -53,6 +115,10 @@ function App() {
       setSessionDetails(data.session)
       setChunks(data.chunks || [])
       setSessionId(id)
+      setIsEditingSession(false)
+      setEditTitle('')
+      setEditYoutubeUrl('')
+      resetChunkViews()
       setStatus('Ready')
     } catch (err) {
       setError(err.message)
@@ -78,6 +144,10 @@ function App() {
       setSessionId(data.id)
       setSessionDetails(data)
       setChunks([])
+      setIsEditingSession(false)
+      setEditTitle('')
+      setEditYoutubeUrl('')
+      resetChunkViews()
       setStatus('Session created')
       await loadSessions()
     } catch (err) {
@@ -124,7 +194,7 @@ function App() {
     }
     setIsProcessing(true)
     setError('')
-    setStatus('Processing (dummy chunks)...')
+    setStatus('Processing (transcribe + chunk)...')
     try {
       const res = await fetch(`${API_BASE}/sessions/${sessionId}/process`, {
         method: 'POST',
@@ -132,6 +202,7 @@ function App() {
       if (!res.ok) throw new Error('Process failed')
       const data = await res.json()
       setChunks(data.chunks || [])
+      resetChunkViews()
       setStatus('Chunks ready')
       await loadSessionDetails(sessionId)
       await loadSessions()
@@ -166,6 +237,7 @@ function App() {
       setChunks(data.results || [])
       setIsSearching(true)
       setLastQuery(trimmed)
+      resetChunkViews()
       setStatus(`Search returned ${data.results?.length ?? 0} results`)
     } catch (err) {
       setError(err.message)
@@ -176,21 +248,91 @@ function App() {
     setSearchQuery('')
     setIsSearching(false)
     setLastQuery('')
+    resetChunkViews()
     if (sessionId) {
       await loadSessionDetails(sessionId)
     }
     setStatus('Search cleared')
   }
 
+  const handleEditSession = () => {
+    if (!sessionDetails) return
+    setEditTitle(sessionDetails.title || '')
+    setEditYoutubeUrl(sessionDetails.youtube_url || '')
+    setIsEditingSession(true)
+  }
+
+  const handleCancelEdit = () => {
+    setIsEditingSession(false)
+    setEditTitle('')
+    setEditYoutubeUrl('')
+  }
+
+  const handleSaveSession = async () => {
+    if (!sessionId) return
+    setStatus('Saving session...')
+    setError('')
+    try {
+      const res = await fetch(`${API_BASE}/sessions/${sessionId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: editTitle.trim() || null,
+          youtube_url: editYoutubeUrl.trim() || null,
+        }),
+      })
+      if (!res.ok) throw new Error('Failed to update session')
+      const data = await res.json()
+      setSessionDetails(data)
+      setIsEditingSession(false)
+      await loadSessions()
+      setStatus('Session updated')
+    } catch (err) {
+      setError(err.message)
+    }
+  }
+
+  const handleDeleteSession = async () => {
+    if (!sessionId) return
+    const confirmed = window.confirm(
+      'Delete this session? This will remove all chunks and media for it.'
+    )
+    if (!confirmed) return
+    setStatus('Deleting session...')
+    setError('')
+    try {
+      const res = await fetch(`${API_BASE}/sessions/${sessionId}`, {
+        method: 'DELETE',
+      })
+      if (!res.ok) throw new Error('Failed to delete session')
+      setSessionId('')
+      setSessionDetails(null)
+      setChunks([])
+      setSearchQuery('')
+      setIsSearching(false)
+      setLastQuery('')
+      resetChunkViews()
+      setIsEditingSession(false)
+      await loadSessions()
+      setStatus('Session deleted')
+    } catch (err) {
+      setError(err.message)
+    }
+  }
+
+  const totalPages = Math.max(1, Math.ceil(chunks.length / pageSize))
+  const pageStart = pageIndex * pageSize
+  const pageChunks = chunks.slice(pageStart, pageStart + pageSize)
+
   return (
     <div className="page">
       <header>
         <div>
-          <p className="eyebrow">RECALL.GG · local-first</p>
-          <h1>Scrim transcripts in one place</h1>
+          <p className="eyebrow">Scrim transcripts in one place</p>
+          <h1>RECALL.GG</h1>
           <p className="lede">
-            Create a session, upload a VOD or audio file, and generate dummy
-            chunks. We will swap in real transcription later.
+            Create a session, upload a VOD or audio file, and generate
+            chunks.
           </p>
         </div>
         <div className="status">
@@ -199,142 +341,262 @@ function App() {
         </div>
       </header>
 
-      <section className="panel">
-        <div className="panel-header">
-          <div>
-            <p className="eyebrow">Step 1</p>
-            <h2>Create a session</h2>
-          </div>
-          <button className="ghost" onClick={loadSessions}>
-            Refresh sessions
-          </button>
-        </div>
-        <form className="stack" onSubmit={handleCreateSession}>
-          <label className="field">
-            <span>Title</span>
-            <input
-              type="text"
-              placeholder="Scrim vs Team Blue"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-            />
-          </label>
-          <label className="field">
-            <span>YouTube URL (stored only)</span>
-            <input
-              type="url"
-              placeholder="https://youtube.com/watch?v=..."
-              value={youtubeUrl}
-              onChange={(e) => setYoutubeUrl(e.target.value)}
-            />
-          </label>
-          <div className="actions">
-            <button type="submit" disabled={isCreating}>
-              {isCreating ? 'Creating...' : 'Create session'}
-            </button>
-            {sessionId && (
-              <span className="hint">
-                Active session: <code>{sessionId}</code>
-              </span>
-            )}
-          </div>
-        </form>
-      </section>
-
-      <section className="panel">
-        <div className="panel-header">
-          <div>
-            <p className="eyebrow">Step 2</p>
-            <h2>Upload media</h2>
-          </div>
-          <span className="hint">
-            Max: local files only. We do not download from YouTube.
-          </span>
-        </div>
-        <form className="stack" onSubmit={handleUpload}>
-          <label className="field file">
-            <span>Choose video or audio</span>
-            <input
-              type="file"
-              onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-            />
-          </label>
-          <div className="actions">
-            <button type="submit" disabled={isUploading}>
-              {isUploading ? 'Uploading...' : 'Upload to session'}
-            </button>
-            <button
-              type="button"
-              className="ghost"
-              onClick={handleProcess}
-              disabled={isProcessing || !sessionDetails?.media_path}
-            >
-              {isProcessing ? 'Processing...' : 'Process (dummy chunks)'}
-            </button>
-          </div>
-        </form>
-      </section>
-
-      <section className="grid">
-        <div className="panel">
-          <div className="panel-header">
-            <div>
-              <p className="eyebrow">Sessions</p>
-              <h2>Pick or revisit</h2>
-            </div>
-          </div>
-          <div className="session-list">
-            {sessions.length === 0 && (
-              <p className="hint">No sessions yet. Create one to begin.</p>
-            )}
-            {sessions.map((session) => (
-              <button
-                key={session.id}
-                className={`session-card ${
-                  session.id === sessionId ? 'active' : ''
-                }`}
-                onClick={() => loadSessionDetails(session.id)}
-              >
-                <div className="session-title">
-                  <strong>{session.title || 'Untitled session'}</strong>
-                  <span>{new Date(session.created_at).toLocaleString()}</span>
+      <section className="main-layout">
+        <div className="left-column">
+          <div className="left-scroll">
+            <section className="panel">
+              <div className="panel-header">
+                <div>
+                  <p className="eyebrow">Step 1</p>
+                  <h2>Create a session</h2>
                 </div>
-                {session.youtube_url && (
-                  <p className="hint">YouTube: {session.youtube_url}</p>
+                <button className="ghost" onClick={loadSessions}>
+                  Refresh sessions
+                </button>
+              </div>
+              <form className="stack" onSubmit={handleCreateSession}>
+                <label className="field">
+                  <span>Title</span>
+                  <input
+                    type="text"
+                    placeholder="Scrim vs Team Blue"
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                  />
+                </label>
+                <label className="field">
+                  <span>YouTube URL (stored only)</span>
+                  <input
+                    type="url"
+                    placeholder="https://youtube.com/watch?v=..."
+                    value={youtubeUrl}
+                    onChange={(e) => setYoutubeUrl(e.target.value)}
+                  />
+                </label>
+                <div className="actions">
+                  <button type="submit" disabled={isCreating}>
+                    {isCreating ? 'Creating...' : 'Create session'}
+                  </button>
+                  {sessionId && (
+                    <span className="hint">
+                      Active session: <code>{sessionId}</code>
+                    </span>
+                  )}
+                </div>
+              </form>
+            </section>
+
+            <section className="panel">
+              <div className="panel-header">
+                <div>
+                  <p className="eyebrow">Step 2</p>
+                  <h2>Upload media</h2>
+                </div>
+                <span className="hint">
+                  Max: local files only. We do not download from YouTube.
+                </span>
+              </div>
+              <form className="stack" onSubmit={handleUpload}>
+                <label className="field file">
+                  <span>Choose video or audio</span>
+                  <input
+                    type="file"
+                    onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+                  />
+                </label>
+                <div className="actions">
+                  <button type="submit" disabled={isUploading}>
+                    {isUploading ? 'Uploading...' : 'Upload to session'}
+                  </button>
+                  <button
+                    type="button"
+                    className="ghost"
+                    onClick={handleProcess}
+                    disabled={isProcessing || !sessionDetails?.media_path}
+                  >
+                    {isProcessing ? 'Processing...' : 'Process (transcribe + chunk)'}
+                  </button>
+                </div>
+              </form>
+            </section>
+
+            <section className="panel">
+              <div className="panel-header">
+                <div>
+                  <p className="eyebrow">Sessions</p>
+                  <h2>Pick or revisit</h2>
+                </div>
+              </div>
+              <div className="session-list">
+                {sessions.length === 0 && (
+                  <p className="hint">No sessions yet. Create one to begin.</p>
                 )}
-                {session.media_path && (
-                  <p className="hint">Media stored at {session.media_path}</p>
+                {sessions.map((session) => (
+                  <button
+                    key={session.id}
+                    className={`session-card ${
+                      session.id === sessionId ? 'active' : ''
+                    }`}
+                    onClick={() => loadSessionDetails(session.id)}
+                  >
+                    <div className="session-title">
+                      <strong>{session.title || 'Untitled session'}</strong>
+                      <span>{new Date(session.created_at).toLocaleString()}</span>
+                    </div>
+                    {session.youtube_url && (
+                      <p className="hint" title={session.youtube_url}>
+                        YouTube: {shortenUrl(session.youtube_url)}
+                      </p>
+                    )}
+                    {session.media_path && (
+                      <p className="hint" title={session.media_path}>
+                        Media: {basename(session.media_path)}
+                      </p>
+                    )}
+                  </button>
+                ))}
+              </div>
+            </section>
+
+          </div>
+
+          <div className="left-footer">
+            {sessionDetails && (
+              <section className="panel">
+                <div className="panel-header">
+                  <div>
+                    <p className="eyebrow">Selected</p>
+                    <h2>Session details</h2>
+                  </div>
+                  <div className="actions">
+                    {isEditingSession ? (
+                      <>
+                        <button type="button" onClick={handleSaveSession}>
+                          Save
+                        </button>
+                        <button
+                          type="button"
+                          className="ghost"
+                          onClick={handleCancelEdit}
+                        >
+                          Cancel
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button
+                          type="button"
+                          onClick={handleDeleteSession}
+                        >
+                          Delete
+                        </button>
+                        <button
+                          type="button"
+                          className="ghost"
+                          onClick={handleEditSession}
+                        >
+                          Edit
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                {isEditingSession ? (
+                  <div className="stack">
+                    <label className="field">
+                      <span>Title</span>
+                      <input
+                        type="text"
+                        value={editTitle}
+                        onChange={(e) => setEditTitle(e.target.value)}
+                      />
+                    </label>
+                    <label className="field">
+                      <span>YouTube URL</span>
+                      <input
+                        type="url"
+                        value={editYoutubeUrl}
+                        onChange={(e) => setEditYoutubeUrl(e.target.value)}
+                      />
+                    </label>
+                  </div>
+                ) : (
+                  <div className="stack">
+                    <div>
+                      <strong>Title:</strong> {sessionDetails.title}
+                    </div>
+
+                    <div>
+                      <strong>YouTube:</strong>{' '}
+                      {sessionDetails.youtube_url ? (
+                        <a
+                          href={sessionDetails.youtube_url}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          link
+                        </a>
+                      ) : (
+                        <span>—</span>
+                      )}
+                    </div>
+
+                    <div title={sessionDetails.media_path}>
+                      <strong>Media:</strong>{' '}
+                      {sessionDetails.media_path
+                        ? basename(sessionDetails.media_path)
+                        : '—'}
+                    </div>
+                  </div>
                 )}
-              </button>
-            ))}
+              </section>
+            )}
+            <section className="panel">
+              <div className="panel-header">
+                <div>
+                  <p className="eyebrow">Search</p>
+                  <h2>Keyword lookup</h2>
+                </div>
+              </div>
+              <div className="stack">
+                <input
+                  type="text"
+                  placeholder={'reset / baron / "we should"'}
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  disabled={!canSearch}
+                />
+                <div className="actions">
+                  <button
+                    type="button"
+                    onClick={handleSearch}
+                    disabled={!canSearch}
+                  >
+                    Search
+                  </button>
+                  <button
+                    type="button"
+                    className="ghost"
+                    onClick={handleClearSearch}
+                    disabled={!canSearch}
+                  >
+                    Clear
+                  </button>
+                </div>
+                {!canSearch && (
+                  <span className="hint">Select a session to search.</span>
+                )}
+              </div>
+            </section>
           </div>
         </div>
 
-        <SessionDetails session={sessionDetails} />
-
-        {(sessionId || sessionDetails) && (
-          <div className="panel">
-            <div className="panel-header">
-              <div>
-                <p className="eyebrow">Search</p>
-                <h2>Keyword lookup</h2>
-              </div>
-            </div>
-            <div className="stack">
-              <input type="text" placeholder={'reset / baron / "we should"'} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
-              <div className="actions">
-                <button type="button" onClick={handleSearch}>Search</button>
-                <button type="button" className="ghost" onClick={handleClearSearch}>Clear</button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        <div className="panel">
+        <section className="panel chunks-panel">
           <div className="panel-header">
             <div>
               <p className="eyebrow">Chunks</p>
-              <h2>Dummy timeline</h2>
+              <h2>Transcript timeline</h2>
             </div>
           </div>
           {!sessionId && (
@@ -350,19 +612,60 @@ function App() {
                 : `Showing all chunks: ${chunks.length}`}
             </p>
           )}
-          <div className="chunk-list">
-            {chunks.map((chunk) => (
-              <div key={chunk.id} className="chunk">
-                <div className="chunk-times">
-                  <span>{formatTime(chunk.start_ms)}</span>
-                  <span>→</span>
-                  <span>{formatTime(chunk.end_ms)}</span>
-                </div>
-                <p>{chunk.text}</p>
+          {sessionId && chunks.length > 0 && (
+            <div className="pagination">
+              <div className="actions">
+                <button
+                  type="button"
+                  className="ghost"
+                  onClick={() => setPageIndex((prev) => Math.max(0, prev - 1))}
+                  disabled={pageIndex === 0}
+                >
+                  Prev
+                </button>
+                <button
+                  type="button"
+                  className="ghost"
+                  onClick={() =>
+                    setPageIndex((prev) => Math.min(totalPages - 1, prev + 1))
+                  }
+                  disabled={pageIndex >= totalPages - 1}
+                >
+                  Next
+                </button>
               </div>
-            ))}
+              <span className="hint">
+                Page {pageIndex + 1} / {totalPages}
+              </span>
+            </div>
+          )}
+          <div className="chunk-list">
+            {pageChunks.map((chunk) => {
+              const chunkKey =
+                chunk.id ??
+                `${chunk.start_ms}-${chunk.end_ms}-${chunk.text?.length ?? 0}`
+              const isExpanded = expandedChunkIds.has(chunkKey)
+              const previewText = getPreviewText(chunk.text || '')
+              return (
+                <div key={chunkKey} className="chunk">
+                  <div className="chunk-times">
+                    <span>{formatTime(chunk.start_ms)}</span>
+                    <span>→</span>
+                    <span>{formatTime(chunk.end_ms)}</span>
+                  </div>
+                  <p>{isExpanded ? chunk.text : previewText}</p>
+                  <button
+                    type="button"
+                    className="ghost"
+                    onClick={() => toggleChunkExpanded(chunkKey)}
+                  >
+                    {isExpanded ? 'Collapse' : 'Expand'}
+                  </button>
+                </div>
+              )
+            })}
           </div>
-        </div>
+        </section>
       </section>
     </div>
   )

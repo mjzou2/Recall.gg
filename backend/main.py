@@ -1,5 +1,6 @@
 import datetime
 import os
+import re
 import shutil
 import sqlite3
 import subprocess
@@ -57,11 +58,30 @@ def init_storage() -> None:
         )
         conn.execute(
             """
+            DROP TRIGGER IF EXISTS chunks_ai
+        """
+        )
+        conn.execute(
+            """
+            DROP TRIGGER IF EXISTS chunks_ad
+        """
+        )
+        conn.execute(
+            """
+            DROP TRIGGER IF EXISTS chunks_au
+        """
+        )
+        conn.execute(
+            """
+            DROP TABLE IF EXISTS chunks_fts
+        """
+        )
+        conn.execute(
+            """
             CREATE VIRTUAL TABLE IF NOT EXISTS chunks_fts USING fts5(
                 text,
                 session_id UNINDEXED,
-                content='chunks',
-                content_rowid='id'
+                content='chunks'
             )
         """
         )
@@ -69,7 +89,7 @@ def init_storage() -> None:
             """
             CREATE TRIGGER IF NOT EXISTS chunks_ai AFTER INSERT ON chunks BEGIN
                 INSERT INTO chunks_fts(rowid, text, session_id)
-                VALUES (new.id, new.text, new.session_id);
+                VALUES (new.rowid, new.text, new.session_id);
             END;
         """
         )
@@ -77,7 +97,7 @@ def init_storage() -> None:
             """
             CREATE TRIGGER IF NOT EXISTS chunks_ad AFTER DELETE ON chunks BEGIN
                 INSERT INTO chunks_fts(chunks_fts, rowid, text, session_id)
-                VALUES ('delete', old.id, old.text, old.session_id);
+                VALUES ('delete', old.rowid, old.text, old.session_id);
             END;
         """
         )
@@ -85,10 +105,15 @@ def init_storage() -> None:
             """
             CREATE TRIGGER IF NOT EXISTS chunks_au AFTER UPDATE ON chunks BEGIN
                 INSERT INTO chunks_fts(chunks_fts, rowid, text, session_id)
-                VALUES ('delete', old.id, old.text, old.session_id);
+                VALUES ('delete', old.rowid, old.text, old.session_id);
                 INSERT INTO chunks_fts(rowid, text, session_id)
-                VALUES (new.id, new.text, new.session_id);
+                VALUES (new.rowid, new.text, new.session_id);
             END;
+        """
+        )
+        conn.execute(
+            """
+            INSERT INTO chunks_fts(chunks_fts) VALUES('rebuild')
         """
         )
 
@@ -98,6 +123,11 @@ def row_to_dict(row: sqlite3.Row) -> Dict:
 
 
 class SessionCreateRequest(BaseModel):
+    title: Optional[str] = None
+    youtube_url: Optional[str] = None
+
+
+class SessionUpdateRequest(BaseModel):
     title: Optional[str] = None
     youtube_url: Optional[str] = None
 
@@ -203,6 +233,46 @@ def get_session(session_id: str) -> Dict:
     chunks = fetch_chunks(session_id)
     return {"session": session, "chunks": chunks}
 
+@app.patch("/sessions/{session_id}", response_model=SessionResponse)
+def update_session(session_id: str, payload: SessionUpdateRequest) -> SessionResponse:
+    fetch_session(session_id)
+    updates = payload.dict(exclude_unset=True)
+    if not updates:
+        return SessionResponse(**fetch_session(session_id))
+
+    fields = []
+    values = []
+    for key in ("title", "youtube_url"):
+        if key in updates:
+            fields.append(f"{key} = ?")
+            values.append(updates[key])
+
+    values.append(session_id)
+    with sqlite3.connect(DB_PATH) as conn:
+        conn.execute(
+            f"UPDATE sessions SET {', '.join(fields)} WHERE id = ?",
+            values,
+        )
+
+    return SessionResponse(**fetch_session(session_id))
+
+@app.delete("/sessions/{session_id}")
+def delete_session(session_id: str) -> Dict[str, bool]:
+    fetch_session(session_id)
+    with sqlite3.connect(DB_PATH) as conn:
+        conn.execute("DELETE FROM chunks WHERE session_id = ?", (session_id,))
+        conn.execute("DELETE FROM sessions WHERE id = ?", (session_id,))
+
+    upload_path = UPLOAD_DIR / session_id
+    if upload_path.exists():
+        shutil.rmtree(upload_path, ignore_errors=True)
+
+    audio_path = AUDIO_DIR / f"{session_id}.wav"
+    if audio_path.exists():
+        audio_path.unlink()
+
+    return {"ok": True}
+
 @app.get("/sessions/{session_id}/chunks", response_model=List[ChunkResponse])
 def get_chunks(session_id: str) -> List[ChunkResponse]:
     fetch_session(session_id)
@@ -219,19 +289,22 @@ def search_chunks(session_id: str, payload: SearchRequest) -> Dict[str, List[Dic
     if limit == 0:
         return {"results": []}
 
+    tokens = [token for token in query.split() if token]
+    fts_query = " ".join(f"{token}*" for token in tokens)
+
     with sqlite3.connect(DB_PATH) as conn:
         conn.row_factory = sqlite3.Row
         rows = conn.execute(
             """
             SELECT c.id, c.start_ms, c.end_ms, c.text
             FROM chunks_fts f
-            JOIN chunks c ON c.id = f.rowid
+            JOIN chunks c ON c.rowid = f.rowid
             WHERE f.session_id = ?
               AND chunks_fts MATCH ?
             ORDER BY bm25(chunks_fts)
             LIMIT ?
             """,
-            (session_id, query, limit),
+            (session_id, fts_query, limit),
         ).fetchall()
 
     results = [
@@ -330,11 +403,39 @@ def get_transcriber() -> WhisperModel:
     return _whisper_model
 
 
+def normalize_lol_text(text: str) -> str:
+    replacements = [
+        (r"\bharold\b", "herald"),
+        (r"\bword(s)?\b", r"ward\1"),
+        (r"\bdrakes?\b", "drake"),
+        (r"\bksante\b", "K'Sante"),
+        (r"\bk sante\b", "K'Sante"),
+        (r"\btp\b", "TP"),
+    ]
+    normalized = text
+    for pattern, replacement in replacements:
+        normalized = re.sub(pattern, replacement, normalized, flags=re.IGNORECASE)
+    return normalized
+
+
 def transcribe_audio(audio_path: Path) -> List[Dict]:
+    hotwords_env = os.environ.get("WHISPER_HOTWORDS")
+    hotwords = hotwords_env or (
+        "baron, herald, grubs, dragon, drake, ward, reset, tp, teleport, flash, "
+        "smite, invade, dive, prio, push, nash, nashor"
+    )
+    normalize_enabled = os.environ.get("DISABLE_LOL_NORMALIZE", "0") != "1"
+    device = os.environ.get("TRANSCRIBE_DEVICE", "cuda").lower()
+    model_name = os.environ.get("WHISPER_MODEL", "base.en")
+    print(
+        "Transcribing with model=%s device=%s hotwords=%s normalize=%s"
+        % (model_name, device, bool(hotwords), normalize_enabled)
+    )
     try:
         segments, _info = get_transcriber().transcribe(
             str(audio_path),
             vad_filter=True,
+            hotwords=hotwords,
         )
     except Exception as exc:
         raise HTTPException(
@@ -346,6 +447,8 @@ def transcribe_audio(audio_path: Path) -> List[Dict]:
         text = segment.text.strip()
         if not text:
             continue
+        if normalize_enabled:
+            text = normalize_lol_text(text)
         results.append(
             {
                 "start_ms": int(segment.start * 1000),
