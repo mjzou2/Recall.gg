@@ -1,4 +1,5 @@
 import datetime
+import json
 import os
 import re
 import shutil
@@ -417,25 +418,69 @@ def normalize_lol_text(text: str) -> str:
         normalized = re.sub(pattern, replacement, normalized, flags=re.IGNORECASE)
     return normalized
 
+def load_term_bank() -> Dict[str, List[str]]:
+    """Load the League of Legends term bank from JSON."""
+    term_bank_path = Path(__file__).resolve().parent / "term_bank.json"
+    try:
+        with open(term_bank_path, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except FileNotFoundError:
+        print(f"Warning: Term bank not found at {term_bank_path}")
+        return {}
+    except json.JSONDecodeError as e:
+        print(f"Warning: Failed to parse term bank: {e}")
+        return {}
 
 def transcribe_audio(audio_path: Path) -> List[Dict]:
-    hotwords_env = os.environ.get("WHISPER_HOTWORDS")
-    hotwords = hotwords_env or (
-        "baron, herald, grubs, dragon, drake, ward, reset, tp, teleport, flash, "
-        "smite, invade, dive, prio, push, nash, nashor"
-    )
+    # Load term bank
+    term_bank = load_term_bank()
+    
+    # Build hotwords list: all objectives + top common_comms terms
+    hotwords_list = []
+    if term_bank:
+        # Add all objectives
+        hotwords_list.extend(term_bank.get("objectives", []))
+        # Add high-frequency comms terms (pick first 15)
+        hotwords_list.extend(term_bank.get("common_comms", [])[:15])
+    
+    # Fallback if term bank fails to load
+    if not hotwords_list:
+        hotwords_list = [
+            "baron", "herald", "grubs", "dragon", "drake", "ward", "reset", 
+            "tp", "teleport", "flash", "smite", "invade", "dive", "prio", "push"
+        ]
+    
+    # Convert list to comma-separated string
+    hotwords = ", ".join(hotwords_list)
+    
+    # Build initial_prompt: natural sentences with key terms
+    initial_prompt = ""
+    if term_bank:
+        objectives = term_bank.get("objectives", [])[:5]  # First 5 objectives
+        champions = term_bank.get("champions", [])[:4]    # First 4 champions
+        comms = term_bank.get("common_comms", [])[:4]     # First 4 comms terms
+        
+        initial_prompt = (
+            f"The team secured {objectives[0] if objectives else 'Baron'} and warded river. "
+            f"{champions[0] if champions else 'The mid laner'} and {champions[1] if len(champions) > 1 else 'the jungler'} "
+            f"rotated mid while tracking the enemy. They need to {comms[0] if comms else 'reset'} and get vision."
+        )
+    
     normalize_enabled = os.environ.get("DISABLE_LOL_NORMALIZE", "0") != "1"
     device = os.environ.get("TRANSCRIBE_DEVICE", "cuda").lower()
     model_name = os.environ.get("WHISPER_MODEL", "base.en")
+    
     print(
-        "Transcribing with model=%s device=%s hotwords=%s normalize=%s"
-        % (model_name, device, bool(hotwords), normalize_enabled)
+        "Transcribing with model=%s device=%s hotwords=%s initial_prompt=%s normalize=%s"
+        % (model_name, device, bool(hotwords), bool(initial_prompt), normalize_enabled)
     )
+    
     try:
         segments, _info = get_transcriber().transcribe(
             str(audio_path),
             vad_filter=True,
             hotwords=hotwords,
+            initial_prompt=initial_prompt, 
         )
     except Exception as exc:
         raise HTTPException(
