@@ -326,6 +326,17 @@ async def upload_media(session_id: str, file: UploadFile = File(...)) -> Dict:
     if not file.filename:
         raise HTTPException(status_code=400, detail="Filename is required")
 
+    MAX_SIZE = 5 * 1024 * 1024 * 1024 # 100MB in bytes
+    file.file.seek(0, 2)  # Seek to end
+    file_size = file.file.tell()
+    file.file.seek(0)  # Seek back to start
+    
+    if file_size > MAX_SIZE:
+        raise HTTPException(
+            status_code=400,
+            detail=f"File too large. Max size is 5GB, got {file_size / 1024 / 1024 / 1024:.1f}GB"
+        )
+
     dest_dir = UPLOAD_DIR / session_id
     dest_dir.mkdir(parents=True, exist_ok=True)
     dest_path = dest_dir / Path(file.filename).name
