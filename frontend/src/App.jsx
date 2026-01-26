@@ -33,6 +33,18 @@ const basename = (path) => {
   return parts[parts.length - 1] || normalized
 }
 
+const buildYoutubeUrlWithTimestamp = (baseUrl, startMs) => {
+  if (!baseUrl) return null
+  const seconds = Math.floor(startMs / 1000)
+  try {
+    const url = new URL(baseUrl)
+    url.searchParams.set('t', `${seconds}s`)
+    return url.toString()
+  } catch {
+    return `${baseUrl}${baseUrl.includes('?') ? '&' : '?'}t=${seconds}s`
+  }
+}
+
 function App() {
   const [title, setTitle] = useState('')
   const [youtubeUrl, setYoutubeUrl] = useState('')
@@ -646,13 +658,30 @@ function App() {
                 `${chunk.start_ms}-${chunk.end_ms}-${chunk.text?.length ?? 0}`
               const isExpanded = expandedChunkIds.has(chunkKey)
               const previewText = getPreviewText(chunk.text || '')
+              const youtubeLink = buildYoutubeUrlWithTimestamp(
+                sessionDetails?.youtube_url,
+                chunk.start_ms
+              )
               return (
                 <div key={chunkKey} className="chunk">
-                  <div className="chunk-times">
-                    <span>{formatTime(chunk.start_ms)}</span>
-                    <span>→</span>
-                    <span>{formatTime(chunk.end_ms)}</span>
-                  </div>
+                  {youtubeLink ? (
+                    <a
+                      href={youtubeLink}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="chunk-times chunk-times-link"
+                    >
+                      <span>{formatTime(chunk.start_ms)}</span>
+                      <span>→</span>
+                      <span>{formatTime(chunk.end_ms)}</span>
+                    </a>
+                  ) : (
+                    <div className="chunk-times">
+                      <span>{formatTime(chunk.start_ms)}</span>
+                      <span>→</span>
+                      <span>{formatTime(chunk.end_ms)}</span>
+                    </div>
+                  )}
                   <p>{isExpanded ? chunk.text : previewText}</p>
                   <button
                     type="button"

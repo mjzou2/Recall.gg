@@ -287,6 +287,20 @@ button:disabled {
   margin-bottom: 0.35rem;
 }
 
+.chunk-times-link {
+  text-decoration: none;
+  cursor: pointer;
+  border-radius: 4px;
+  padding: 0.15rem 0.3rem;
+  margin: -0.15rem -0.3rem;
+  transition: background-color 0.15s ease;
+}
+
+.chunk-times-link:hover {
+  background-color: rgba(28, 63, 128, 0.1);
+  text-decoration: underline;
+}
+
 .panel a {
   overflow-wrap: anywhere;
   word-break: break-word;
