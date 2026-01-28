@@ -5,6 +5,7 @@ import re
 import shutil
 import sqlite3
 import subprocess
+import time
 import uuid
 from pathlib import Path
 from typing import Dict, List, Optional
@@ -40,6 +41,14 @@ def init_storage() -> None:
             )
         """
         )
+        # Add processing_duration_seconds column if it doesn't exist (for existing databases)
+        try:
+            conn.execute(
+                "ALTER TABLE sessions ADD COLUMN processing_duration_seconds INTEGER"
+            )
+        except sqlite3.OperationalError:
+            pass  # Column already exists
+
         conn.execute(
             """
             CREATE TABLE IF NOT EXISTS chunks (
@@ -141,6 +150,7 @@ class SessionResponse(BaseModel):
     media_path: Optional[str] = None
     audio_path: Optional[str] = None
     created_at: str
+    processing_duration_seconds: Optional[int] = None
 
 class ChunkResponse(BaseModel):
     id: str
@@ -215,6 +225,7 @@ def create_session(payload: SessionCreateRequest) -> SessionResponse:
         media_path=None,
         audio_path=None,
         created_at=created_at,
+        processing_duration_seconds=None,
     )
 
 
@@ -550,6 +561,9 @@ def process_media(session_id: str) -> Dict:
     if not media_file.exists():
         raise HTTPException(status_code=400, detail="Stored media file is missing.")
 
+    # Record start time for duration tracking
+    start_time = time.time()
+
     with sqlite3.connect(DB_PATH) as conn:
         conn.execute(
             "UPDATE sessions SET status = 'processing', audio_path = NULL WHERE id = ?",
@@ -576,6 +590,9 @@ def process_media(session_id: str) -> Dict:
             for chunk in chunks
         ]
 
+        # Calculate processing duration
+        duration_seconds = int(time.time() - start_time)
+
         with sqlite3.connect(DB_PATH) as conn:
             if chunk_rows:
                 conn.executemany(
@@ -586,8 +603,8 @@ def process_media(session_id: str) -> Dict:
                     chunk_rows,
                 )
             conn.execute(
-                "UPDATE sessions SET status = 'ready', audio_path = ? WHERE id = ?",
-                (str(audio_path), session_id),
+                "UPDATE sessions SET status = 'ready', audio_path = ?, processing_duration_seconds = ? WHERE id = ?",
+                (str(audio_path), duration_seconds, session_id),
             )
     except Exception as exc:
         with sqlite3.connect(DB_PATH) as conn:

@@ -9,6 +9,14 @@ const formatTime = (ms) => {
   return `${minutes}:${seconds.toString().padStart(2, '0')}`
 }
 
+const formatDuration = (seconds) => {
+  if (seconds == null) return null
+  const mins = Math.floor(seconds / 60)
+  const secs = seconds % 60
+  if (mins === 0) return `${secs}s`
+  return `${mins}m ${secs}s`
+}
+
 const shortenUrl = (url) => {
   if (!url) return ''
   try {
@@ -66,6 +74,7 @@ function App() {
   const [isEditingSession, setIsEditingSession] = useState(false)
   const [editTitle, setEditTitle] = useState('')
   const [editYoutubeUrl, setEditYoutubeUrl] = useState('')
+  const [elapsedSeconds, setElapsedSeconds] = useState(0)
 
   const pageSize = 25
   const canSearch = Boolean(sessionId)
@@ -80,6 +89,20 @@ function App() {
       setPageIndex(0)
     }
   }, [chunks.length, pageIndex])
+
+  // Timer for tracking elapsed processing time
+  useEffect(() => {
+    if (!isProcessing) {
+      return
+    }
+    // Reset elapsed time when processing starts
+    setElapsedSeconds(0)
+    const interval = setInterval(() => {
+      setElapsedSeconds((prev) => prev + 1)
+    }, 1000)
+    // Cleanup: clear interval when processing ends or component unmounts
+    return () => clearInterval(interval)
+  }, [isProcessing])
 
   const resetChunkViews = () => {
     setPageIndex(0)
@@ -426,7 +449,9 @@ function App() {
                     onClick={handleProcess}
                     disabled={isProcessing || !sessionDetails?.media_path}
                   >
-                    {isProcessing ? 'Processing...' : 'Process (transcribe + chunk)'}
+                    {isProcessing
+                      ? `Processing... ${formatTime(elapsedSeconds * 1000)}`
+                      : 'Process (transcribe + chunk)'}
                   </button>
                 </div>
               </form>
@@ -560,6 +585,13 @@ function App() {
                         ? basename(sessionDetails.media_path)
                         : '—'}
                     </div>
+
+                    {sessionDetails.processing_duration_seconds != null && (
+                      <div>
+                        <strong>Processed in:</strong>{' '}
+                        {formatDuration(sessionDetails.processing_duration_seconds)}
+                      </div>
+                    )}
                   </div>
                 )}
               </section>
