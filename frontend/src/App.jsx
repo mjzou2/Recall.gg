@@ -363,7 +363,7 @@ function App() {
     <div className="page">
       <header>
         <div>
-          <p className="eyebrow">Scrim transcripts in one place</p>
+          <p className="eyebrow">Scrim reviews made efficient</p>
           <h1>RECALL.GG</h1>
           <p className="lede">
             Create a session, upload a VOD or audio file, and generate
@@ -400,7 +400,7 @@ function App() {
                   />
                 </label>
                 <label className="field">
-                  <span>YouTube URL (stored only)</span>
+                  <span>YouTube URL</span>
                   <input
                     type="url"
                     placeholder="https://youtube.com/watch?v=..."
