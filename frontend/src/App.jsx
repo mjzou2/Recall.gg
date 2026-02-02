@@ -428,7 +428,7 @@ function App() {
                   <h2>Upload media</h2>
                 </div>
                 <span className="hint">
-                  Max: local files only. We do not download from YouTube.
+                  Max: local files only.
                 </span>
               </div>
               <form className="stack" onSubmit={handleUpload}>
