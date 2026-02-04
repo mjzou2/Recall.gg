@@ -238,7 +238,9 @@
     "supp",
     "opening",
     "hedge",
-    "hedging"
+    "hedging",
+    "crossmap",
+    "counter"
   ],
   
   "items": [
