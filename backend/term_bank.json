@@ -51,7 +51,6 @@
     "Gnar",
     "Gragas",
     "Graves",
-    "Gwen",
     "Hecarim",
     "Heimerdinger",
     "Hwei",
@@ -83,7 +82,6 @@
     "Leona",
     "Lillia",
     "Lissandra",
-    "Lucian",
     "Lulu",
     "Lux",
     "Malphite",
@@ -102,7 +100,6 @@
     "Nidalee",
     "Nocturne",
     "Nunu",
-    "Olaf",
     "Orianna",
     "Ornn",
     "Pantheon",
@@ -136,7 +133,6 @@
     "Sona",
     "Soraka",
     "Swain",
-    "Sylas",
     "Syndra",
     "Tahm Kench",
     "Taliyah",
@@ -175,7 +171,6 @@
     "Zeri",
     "Ziggs",
     "Zilean",
-    "Zoe",
     "Zyra"
   ],
   
@@ -241,7 +236,9 @@
     "ADC",
     "support",
     "supp",
-    "opening"
+    "opening",
+    "hedge",
+    "hedging"
   ],
   
   "items": [
