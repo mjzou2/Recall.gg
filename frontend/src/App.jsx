@@ -9,6 +9,18 @@ const formatTime = (ms) => {
   return `${minutes}:${seconds.toString().padStart(2, '0')}`
 }
 
+const parseTime = (timeStr) => {
+  if (!timeStr || !timeStr.trim()) return null
+  const parts = timeStr.trim().split(':')
+  if (parts.length !== 2) return null
+  const minutes = parseInt(parts[0], 10)
+  const seconds = parseInt(parts[1], 10)
+  if (isNaN(minutes) || isNaN(seconds)) return null
+  if (seconds < 0 || seconds >= 60) return null
+  if (minutes < 0) return null
+  return (minutes * 60 + seconds) * 1000
+}
+
 const formatDuration = (seconds) => {
   if (seconds == null) return null
   const mins = Math.floor(seconds / 60)
@@ -69,6 +81,10 @@ function App() {
   const [searchQuery, setSearchQuery] = useState('')
   const [isSearching, setIsSearching] = useState(false)
   const [lastQuery, setLastQuery] = useState('')
+  const [startTime, setStartTime] = useState('')
+  const [endTime, setEndTime] = useState('')
+  const [timeRangeError, setTimeRangeError] = useState('')
+  const [lastTimeRange, setLastTimeRange] = useState('')
   const [pageIndex, setPageIndex] = useState(0)
   const [expandedChunkIds, setExpandedChunkIds] = useState(new Set())
   const [isEditingSession, setIsEditingSession] = useState(false)
@@ -250,28 +266,72 @@ function App() {
 
   const handleSearch = async () => {
     if (!sessionId) return
+
     const trimmed = searchQuery.trim()
-    if (!trimmed) {
+    const startTimeInput = startTime.trim()
+    const endTimeInput = endTime.trim()
+
+    // If no filters provided, reset to all chunks
+    if (!trimmed && !startTimeInput && !endTimeInput) {
       setSearchQuery('')
+      setStartTime('')
+      setEndTime('')
       setIsSearching(false)
       setLastQuery('')
+      setLastTimeRange('')
+      setTimeRangeError('')
       await loadSessionDetails(sessionId)
       setStatus('Search cleared')
       return
     }
+
+    // Parse time inputs
+    const startMs = startTimeInput ? parseTime(startTimeInput) : null
+    const endMs = endTimeInput ? parseTime(endTimeInput) : null
+
+    // Validate time range
+    if (startTimeInput && startMs === null) {
+      setTimeRangeError('Invalid start time format (use MM:SS)')
+      return
+    }
+    if (endTimeInput && endMs === null) {
+      setTimeRangeError('Invalid end time format (use MM:SS)')
+      return
+    }
+    if (startMs !== null && endMs !== null && startMs >= endMs) {
+      setTimeRangeError('End time must be after start time')
+      return
+    }
+
+    // Clear any previous errors
+    setTimeRangeError('')
     setStatus('Searching...')
     setError('')
+
     try {
       const res = await fetch(`${API_BASE}/sessions/${sessionId}/search`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query: trimmed, limit: 50 }),
+        body: JSON.stringify({
+          query: trimmed,
+          limit: 50,
+          start_time_ms: startMs,
+          end_time_ms: endMs,
+        }),
       })
       if (!res.ok) throw new Error('Search failed')
       const data = await res.json()
       setChunks(data.results || [])
       setIsSearching(true)
       setLastQuery(trimmed)
+
+      // Track time range for display
+      if (startTimeInput || endTimeInput) {
+        setLastTimeRange(`${startTimeInput || '0:00'}-${endTimeInput || '∞'}`)
+      } else {
+        setLastTimeRange('')
+      }
+
       resetChunkViews()
       setStatus(`Search returned ${data.results?.length ?? 0} results`)
     } catch (err) {
@@ -281,8 +341,12 @@ function App() {
 
   const handleClearSearch = async () => {
     setSearchQuery('')
+    setStartTime('')
+    setEndTime('')
+    setTimeRangeError('')
     setIsSearching(false)
     setLastQuery('')
+    setLastTimeRange('')
     resetChunkViews()
     if (sessionId) {
       await loadSessionDetails(sessionId)
@@ -611,6 +675,37 @@ function App() {
                   onChange={(e) => setSearchQuery(e.target.value)}
                   disabled={!canSearch}
                 />
+                <div className="time-range-fields">
+                  <label className="field">
+                    <span>Start time</span>
+                    <input
+                      type="text"
+                      placeholder="MM:SS"
+                      value={startTime}
+                      onChange={(e) => {
+                        setStartTime(e.target.value)
+                        setTimeRangeError('')
+                      }}
+                      disabled={!canSearch}
+                    />
+                  </label>
+                  <label className="field">
+                    <span>End time</span>
+                    <input
+                      type="text"
+                      placeholder="MM:SS"
+                      value={endTime}
+                      onChange={(e) => {
+                        setEndTime(e.target.value)
+                        setTimeRangeError('')
+                      }}
+                      disabled={!canSearch}
+                    />
+                  </label>
+                </div>
+                {timeRangeError && (
+                  <span className="hint danger">{timeRangeError}</span>
+                )}
                 <div className="actions">
                   <button
                     type="button"
@@ -651,9 +746,15 @@ function App() {
           )}
           {sessionId && (
             <p className="hint">
-              {isSearching
-                ? `Results: ${chunks.length} (query: ${lastQuery})`
-                : `Showing all chunks: ${chunks.length}`}
+              {isSearching ? (
+                <>
+                  Results: {chunks.length}
+                  {lastQuery && ` (keyword: ${lastQuery})`}
+                  {lastTimeRange && ` (time: ${lastTimeRange})`}
+                </>
+              ) : (
+                `Showing all chunks: ${chunks.length}`
+              )}
             </p>
           )}
           {sessionId && chunks.length > 0 && (

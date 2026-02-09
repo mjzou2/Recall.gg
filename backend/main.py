@@ -160,8 +160,10 @@ class ChunkResponse(BaseModel):
     text: str
 
 class SearchRequest(BaseModel):
-    query: str
+    query: str = ""
     limit: int = 20
+    start_time_ms: Optional[int] = None
+    end_time_ms: Optional[int] = None
 
 app = FastAPI(title="RECALL.GG", description="Esports comms search MVP")
 
@@ -293,31 +295,89 @@ def get_chunks(session_id: str) -> List[ChunkResponse]:
 @app.post("/sessions/{session_id}/search")
 def search_chunks(session_id: str, payload: SearchRequest) -> Dict[str, List[Dict]]:
     fetch_session(session_id)
+
+    # Extract and validate parameters
     query = payload.query.strip()
-    if not query:
+    start_time_ms = payload.start_time_ms
+    end_time_ms = payload.end_time_ms
+    limit = max(0, min(payload.limit, 50))
+
+    # Validate time range
+    if start_time_ms is not None and start_time_ms < 0:
+        raise HTTPException(status_code=400, detail="Start time cannot be negative")
+    if end_time_ms is not None and end_time_ms < 0:
+        raise HTTPException(status_code=400, detail="End time cannot be negative")
+    if start_time_ms is not None and end_time_ms is not None and start_time_ms >= end_time_ms:
+        raise HTTPException(status_code=400, detail="End time must be after start time")
+
+    # Handle one-sided ranges
+    if start_time_ms is not None and end_time_ms is None:
+        end_time_ms = 999999999999  # Very large value (over 11 days)
+    if end_time_ms is not None and start_time_ms is None:
+        start_time_ms = 0
+
+    # Return empty if no filters provided
+    if not query and start_time_ms is None and end_time_ms is None:
         return {"results": []}
 
-    limit = max(0, min(payload.limit, 50))
     if limit == 0:
         return {"results": []}
 
-    tokens = [token for token in query.split() if token]
-    fts_query = " ".join(f"{token}*" for token in tokens)
-
     with sqlite3.connect(DB_PATH) as conn:
         conn.row_factory = sqlite3.Row
-        rows = conn.execute(
-            """
-            SELECT c.id, c.start_ms, c.end_ms, c.text
-            FROM chunks_fts f
-            JOIN chunks c ON c.rowid = f.rowid
-            WHERE f.session_id = ?
-              AND chunks_fts MATCH ?
-            ORDER BY bm25(chunks_fts)
-            LIMIT ?
-            """,
-            (session_id, fts_query, limit),
-        ).fetchall()
+
+        # Case 1: Keyword only (existing behavior)
+        if query and start_time_ms is None:
+            tokens = [token for token in query.split() if token]
+            fts_query = " ".join(f"{token}*" for token in tokens)
+
+            rows = conn.execute(
+                """
+                SELECT c.id, c.start_ms, c.end_ms, c.text
+                FROM chunks_fts f
+                JOIN chunks c ON c.rowid = f.rowid
+                WHERE f.session_id = ?
+                  AND chunks_fts MATCH ?
+                ORDER BY bm25(chunks_fts)
+                LIMIT ?
+                """,
+                (session_id, fts_query, limit),
+            ).fetchall()
+
+        # Case 2: Time range only
+        elif not query and start_time_ms is not None:
+            rows = conn.execute(
+                """
+                SELECT id, start_ms, end_ms, text
+                FROM chunks
+                WHERE session_id = ?
+                  AND start_ms < ?
+                  AND end_ms > ?
+                ORDER BY start_ms
+                LIMIT ?
+                """,
+                (session_id, end_time_ms, start_time_ms, limit),
+            ).fetchall()
+
+        # Case 3: Combined keyword + time range
+        else:  # query and start_time_ms is not None
+            tokens = [token for token in query.split() if token]
+            fts_query = " ".join(f"{token}*" for token in tokens)
+
+            rows = conn.execute(
+                """
+                SELECT c.id, c.start_ms, c.end_ms, c.text
+                FROM chunks_fts f
+                JOIN chunks c ON c.rowid = f.rowid
+                WHERE f.session_id = ?
+                  AND chunks_fts MATCH ?
+                  AND c.start_ms < ?
+                  AND c.end_ms > ?
+                ORDER BY bm25(chunks_fts)
+                LIMIT ?
+                """,
+                (session_id, fts_query, end_time_ms, start_time_ms, limit),
+            ).fetchall()
 
     results = [
         {

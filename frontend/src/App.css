@@ -164,6 +164,17 @@ h2 {
   padding: 0.55rem 0.6rem;
 }
 
+.time-range-fields {
+  display: grid;
+  grid-template-columns: 120px 120px;
+  gap: 0.75rem;
+}
+
+.hint.danger {
+  color: #b2273c;
+  font-weight: 600;
+}
+
 .actions {
   display: flex;
   gap: 0.75rem;
@@ -338,5 +349,9 @@ button:disabled {
   .left-scroll {
     overflow: visible;
     padding-right: 0;
+  }
+
+  .time-range-fields {
+    grid-template-columns: 1fr;
   }
 }
