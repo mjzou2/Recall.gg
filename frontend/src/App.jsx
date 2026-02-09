@@ -88,6 +88,7 @@ function App() {
   const [lastTimeRange, setLastTimeRange] = useState('')
   const [pageIndex, setPageIndex] = useState(0)
   const [expandedChunkIds, setExpandedChunkIds] = useState(new Set())
+  const [copiedChunkId, setCopiedChunkId] = useState(null)
   const [isEditingSession, setIsEditingSession] = useState(false)
   const [editTitle, setEditTitle] = useState('')
   const [editYoutubeUrl, setEditYoutubeUrl] = useState('')
@@ -145,6 +146,17 @@ function App() {
       }
       return next
     })
+  }
+
+  const handleCopyTimestamp = async (chunkKey, youtubeLink) => {
+    if (!youtubeLink) return
+    try {
+      await navigator.clipboard.writeText(youtubeLink)
+      setCopiedChunkId(chunkKey)
+      setTimeout(() => setCopiedChunkId(null), 2000) // Clear after 2 seconds
+    } catch (err) {
+      console.error('Failed to copy:', err)
+    }
   }
 
   const loadSessions = async () => {
@@ -840,24 +852,36 @@ function App() {
               )
               return (
                 <div key={chunkKey} className="chunk">
-                  {youtubeLink ? (
-                    <a
-                      href={youtubeLink}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="chunk-times chunk-times-link"
-                    >
-                      <span>{formatTime(chunk.start_ms)}</span>
-                      <span>→</span>
-                      <span>{formatTime(chunk.end_ms)}</span>
-                    </a>
-                  ) : (
-                    <div className="chunk-times">
-                      <span>{formatTime(chunk.start_ms)}</span>
-                      <span>→</span>
-                      <span>{formatTime(chunk.end_ms)}</span>
-                    </div>
-                  )}
+                  <div className="chunk-header">
+                    {youtubeLink ? (
+                      <a
+                        href={youtubeLink}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="chunk-times chunk-times-link"
+                      >
+                        <span>{formatTime(chunk.start_ms)}</span>
+                        <span>→</span>
+                        <span>{formatTime(chunk.end_ms)}</span>
+                      </a>
+                    ) : (
+                      <div className="chunk-times">
+                        <span>{formatTime(chunk.start_ms)}</span>
+                        <span>→</span>
+                        <span>{formatTime(chunk.end_ms)}</span>
+                      </div>
+                    )}
+                    {youtubeLink && (
+                      <button
+                        type="button"
+                        className="copy-btn"
+                        onClick={() => handleCopyTimestamp(chunkKey, youtubeLink)}
+                        title="Copy timestamp URL"
+                      >
+                        {copiedChunkId === chunkKey ? '✓ Copied' : 'Copy'}
+                      </button>
+                    )}
+                  </div>
                   <p>{isExpanded ? chunk.text : previewText}</p>
                   <button
                     type="button"

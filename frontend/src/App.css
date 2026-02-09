@@ -346,6 +346,36 @@ button:disabled {
   text-decoration: underline;
 }
 
+.chunk-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.35rem;
+}
+
+.copy-btn {
+  background: transparent;
+  border: 1px solid #cbd5e4;
+  color: #1c3f80;
+  padding: 0.2rem 0.5rem;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  box-shadow: none;
+}
+
+.copy-btn:hover {
+  background: #f0f4f9;
+  border-color: #2f6bff;
+  transform: none;
+}
+
+.copy-btn:active {
+  transform: scale(0.95);
+}
+
 .panel a {
   overflow-wrap: anywhere;
   word-break: break-word;
