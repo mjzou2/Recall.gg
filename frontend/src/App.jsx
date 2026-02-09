@@ -68,6 +68,7 @@ const buildYoutubeUrlWithTimestamp = (baseUrl, startMs) => {
 function App() {
   const [title, setTitle] = useState('')
   const [youtubeUrl, setYoutubeUrl] = useState('')
+  const [notes, setNotes] = useState('')
   const [sessions, setSessions] = useState([])
   const [sessionId, setSessionId] = useState('')
   const [sessionDetails, setSessionDetails] = useState(null)
@@ -90,6 +91,7 @@ function App() {
   const [isEditingSession, setIsEditingSession] = useState(false)
   const [editTitle, setEditTitle] = useState('')
   const [editYoutubeUrl, setEditYoutubeUrl] = useState('')
+  const [editNotes, setEditNotes] = useState('')
   const [elapsedSeconds, setElapsedSeconds] = useState(0)
 
   const pageSize = 25
@@ -188,6 +190,7 @@ function App() {
         body: JSON.stringify({
           title: title || null,
           youtube_url: youtubeUrl || null,
+          notes: notes || null,
         }),
       })
       if (!res.ok) throw new Error('Failed to create session')
@@ -358,6 +361,7 @@ function App() {
     if (!sessionDetails) return
     setEditTitle(sessionDetails.title || '')
     setEditYoutubeUrl(sessionDetails.youtube_url || '')
+    setEditNotes(sessionDetails.notes || '')
     setIsEditingSession(true)
   }
 
@@ -365,6 +369,7 @@ function App() {
     setIsEditingSession(false)
     setEditTitle('')
     setEditYoutubeUrl('')
+    setEditNotes('')
   }
 
   const handleSaveSession = async () => {
@@ -378,6 +383,7 @@ function App() {
         body: JSON.stringify({
           title: editTitle.trim() || null,
           youtube_url: editYoutubeUrl.trim() || null,
+          notes: editNotes.trim() || null,
         }),
       })
       if (!res.ok) throw new Error('Failed to update session')
@@ -472,6 +478,18 @@ function App() {
                     onChange={(e) => setYoutubeUrl(e.target.value)}
                   />
                 </label>
+                <label className="field">
+                  <span>
+                    Notes <span className="hint">(optional, {150 - notes.length} chars left)</span>
+                  </span>
+                  <textarea
+                    placeholder="e.g., 'Scrim vs Team Red - Baron control focus'"
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    maxLength={150}
+                    rows={2}
+                  />
+                </label>
                 <div className="actions">
                   <button type="submit" disabled={isCreating}>
                     {isCreating ? 'Creating...' : 'Create session'}
@@ -554,6 +572,13 @@ function App() {
                         Media: {basename(session.media_path)}
                       </p>
                     )}
+                    {session.notes && (
+                      <p className="session-notes-preview">
+                        {session.notes.length > 60
+                          ? session.notes.slice(0, 60) + '...'
+                          : session.notes}
+                      </p>
+                    )}
                   </button>
                 ))}
               </div>
@@ -621,6 +646,17 @@ function App() {
                         onChange={(e) => setEditYoutubeUrl(e.target.value)}
                       />
                     </label>
+                    <label className="field">
+                      <span>
+                        Notes <span className="hint">({150 - editNotes.length} chars left)</span>
+                      </span>
+                      <textarea
+                        value={editNotes}
+                        onChange={(e) => setEditNotes(e.target.value)}
+                        maxLength={150}
+                        rows={2}
+                      />
+                    </label>
                   </div>
                 ) : (
                   <div className="stack">
@@ -642,6 +678,13 @@ function App() {
                         <span>—</span>
                       )}
                     </div>
+
+                    {sessionDetails.notes && (
+                      <div className="session-notes-full">
+                        <strong>Notes:</strong>{' '}
+                        <span className="notes-text">{sessionDetails.notes}</span>
+                      </div>
+                    )}
 
                     <div title={sessionDetails.media_path}>
                       <strong>Media:</strong>{' '}

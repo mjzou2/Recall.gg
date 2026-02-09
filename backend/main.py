@@ -49,6 +49,14 @@ def init_storage() -> None:
         except sqlite3.OperationalError:
             pass  # Column already exists
 
+        # Add notes column if it doesn't exist (for existing databases)
+        try:
+            conn.execute(
+                "ALTER TABLE sessions ADD COLUMN notes TEXT"
+            )
+        except sqlite3.OperationalError:
+            pass  # Column already exists
+
         conn.execute(
             """
             CREATE TABLE IF NOT EXISTS chunks (
@@ -135,11 +143,13 @@ def row_to_dict(row: sqlite3.Row) -> Dict:
 class SessionCreateRequest(BaseModel):
     title: Optional[str] = None
     youtube_url: Optional[str] = None
+    notes: Optional[str] = None
 
 
 class SessionUpdateRequest(BaseModel):
     title: Optional[str] = None
     youtube_url: Optional[str] = None
+    notes: Optional[str] = None
 
 
 class SessionResponse(BaseModel):
@@ -151,6 +161,7 @@ class SessionResponse(BaseModel):
     audio_path: Optional[str] = None
     created_at: str
     processing_duration_seconds: Optional[int] = None
+    notes: Optional[str] = None
 
 class ChunkResponse(BaseModel):
     id: str
@@ -214,10 +225,10 @@ def create_session(payload: SessionCreateRequest) -> SessionResponse:
     with sqlite3.connect(DB_PATH) as conn:
         conn.execute(
             """
-            INSERT INTO sessions(id, title, youtube_url, created_at)
-            VALUES (?, ?, ?, ?)
+            INSERT INTO sessions(id, title, youtube_url, notes, created_at)
+            VALUES (?, ?, ?, ?, ?)
             """,
-            (session_id, payload.title, payload.youtube_url, created_at),
+            (session_id, payload.title, payload.youtube_url, payload.notes, created_at),
         )
     return SessionResponse(
         id=session_id,
@@ -228,6 +239,7 @@ def create_session(payload: SessionCreateRequest) -> SessionResponse:
         audio_path=None,
         created_at=created_at,
         processing_duration_seconds=None,
+        notes=payload.notes,
     )
 
 
@@ -256,7 +268,7 @@ def update_session(session_id: str, payload: SessionUpdateRequest) -> SessionRes
 
     fields = []
     values = []
-    for key in ("title", "youtube_url"):
+    for key in ("title", "youtube_url", "notes"):
         if key in updates:
             fields.append(f"{key} = ?")
             values.append(updates[key])
