@@ -1,113 +1,241 @@
-# RECALL.GG (local-first MVP)
+# RECALL.GG
 
-Scrim/VOD comms transcription + timestamped chunking + search (local-first MVP).
+**Local-first esports VOD comms search and decision archaeology tool.**
 
-## Dependencies
+Turn hours of scrim voice comms into a searchable, timestamped knowledge base. Find any moment, decision, or callout in seconds.
 
-### System (required)
-- ffmpeg (required for video → audio extraction)
-- sqlite3 (optional, for inspecting the DB)
+---
 
-Install:
-    sudo apt update
-    sudo apt install -y ffmpeg sqlite3
+## What This Does
 
-### Python (required)
-This project uses faster-whisper for transcription (installed in your virtualenv).
+Most VOD tools parse **game events** (kills, objectives, gold). RECALL.GG parses **human decisions** from voice comms:
+- Plan formation: "we should Baron after this wave"
+- Plan evolution: "no wait, they have TP, let's reset"
+- Conflicts and attribution: "I called the dive", "my bad, I didn't see"
 
-Note: if you use GPU transcription, you also need system CUDA/cuDNN (see below).
+**The problem:** Coaches spend hours scrubbing through VODs trying to find specific callouts or decisions. Manual note-taking is slow and incomplete.
 
-### Optional: GPU transcription (CUDA)
-If you want transcription to run on your NVIDIA GPU:
+**The solution:** Upload audio, get instant search. Find every mention of "Baron" across a 45-minute scrim in 5 seconds. Jump directly to the timestamp in the YouTube VOD.
 
+---
+
+## Current Features (MVP 1.0)
+
+**Session Management:**
+- ✅ Create, list, edit, and delete sessions
+- ✅ Track processing duration for each session
+
+**Media Processing:**
+- ✅ Upload audio (mp3, m4a, wav) or video (mp4, mkv, avi)
+- ✅ Automatic audio extraction from video files (ffmpeg)
+- ✅ GPU-accelerated transcription (faster-whisper + CUDA)
+- ✅ **League-specific term bank** (305 terms: champions, objectives, items, locations, mechanics)
+- ✅ Post-normalization for common mishears ("harold" → "herald")
+- ✅ ~60% accuracy on League terms, ~5 min per hour of audio
+
+**Search & Navigation:**
+- ✅ **Keyword search** - Full-text search with BM25 ranking (SQLite FTS5)
+- ✅ **Time range filtering** - Filter chunks by game time (MM:SS format)
+- ✅ Clickable timestamps - Jump to exact moment in YouTube VOD
+- ✅ Pagination and chunk expansion
+
+**In-progress:**
+- ⚙️ Embedded YouTube player with bidirectional sync
+- ⚙️ Manual chunk annotations (add coach notes to chunks)
+- ⚙️ Chunk inline editing (fix transcription errors)
+- ⚙️ Bookmarks/favorites (star important chunks)
+- ⚙️ Copy timestamp to clipboard
+- ⚙️ Fuzzy post-processing with RapidFuzz (target: 70-80% accuracy)
+- ⚙️ Demo video showing the app and its features at the end of MVP 1.0
+
+See [PRODUCT.md](docs/PRODUCT.md) for the full roadmap (MVP 1.5, 2.0).
+
+---
+
+## Quick Start
+
+### Prerequisites
+
+**System dependencies:**
+```bash
+sudo apt update
+sudo apt install -y ffmpeg sqlite3
+```
+
+**Optional: GPU acceleration (NVIDIA + CUDA)**
 - WSL2: NVIDIA driver on Windows with WSL GPU support
-- Inside Ubuntu (WSL): CUDA Toolkit 12.x (example: 12.9) + cuDNN for CUDA 12 (example: cuDNN 9)
+- Inside WSL: CUDA Toolkit 12.x + cuDNN 9
+```bash
+sudo apt install -y cuda-toolkit-12-9 cudnn9-cuda-12
+```
 
-Common packages (after you’ve configured the NVIDIA CUDA apt repo on your system):
-    sudo apt update
-    sudo apt install -y cuda-toolkit-12-9 cudnn9-cuda-12
+### Setup
 
-## Configuration (env vars)
+**1. Clone and install backend:**
+```bash
+cd backend
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
 
-Backend transcription settings:
+**2. Create `.env` file in `backend/`:**
+```bash
+WHISPER_MODEL=small.en
+TRANSCRIBE_DEVICE=cuda  # or 'cpu' if no GPU
+DISABLE_LOL_NORMALIZE=0
+```
 
-- TRANSCRIBE_DEVICE
-  - cuda (default, if your machine supports it)
-  - cpu (fallback)
-- WHISPER_MODEL
-  - default: base.en
-  - examples: small.en, medium.en
+**3. Start backend:**
+```bash
+cd backend
+source .venv/bin/activate
+uvicorn main:app --reload --port 8000
+```
+API docs: http://localhost:8000/docs
 
-### .env.example (recommended)
-Create a file named .env.example at the repo root:
+**4. Install and start frontend:**
+```bash
+cd frontend
+npm install
+npm run dev
+```
+Frontend: http://localhost:5173
 
-    TRANSCRIBE_DEVICE=cuda
-    WHISPER_MODEL=base.en
+---
 
-(Your real .env should be gitignored.)
+## Usage
 
-## Quickstart (Local Dev)
+1. **Create a session** - Give it a title and optional YouTube URL
+2. **Upload audio/video** - Drop your scrim recording (or extract from OBS/Discord)
+3. **Process** - Click "Process" to start transcription (~5 min per hour of audio)
+4. **Search** - Enter keywords like "Baron", "dive mid", "reset"
+5. **Filter by time** - Enter start/end time (e.g., "5:00" to "10:00") to narrow results
+6. **Jump to VOD** - Click chunk timestamps to open YouTube at that exact moment
 
-Backend:
-    cd ~/projects/vodcomms
-    source .venv/bin/activate
-    cd backend
-    python -m uvicorn main:app --reload --port 8000
+---
 
-Backend API docs:
-- http://localhost:8000/docs
+## Technical Stack
 
-Frontend:
-    cd ~/projects/vodcomms/frontend
-    npm install
-    npm run dev
+- **Backend:** FastAPI (Python), SQLite with FTS5, faster-whisper, ffmpeg
+- **Frontend:** React + Vite
+- **Environment:** WSL2, GPU-accelerated (CUDA 12.9), local-first (no cloud)
+- **Data:** All sessions/chunks/audio stored locally in `backend/data/`
 
-Frontend dev server:
-- http://localhost:5173
+---
 
-## Run backend
+## Transcription Accuracy
 
-From repo root:
-    cd ~/projects/vodcomms
-    source .venv/bin/activate
-    cd backend
-    python -m uvicorn main:app --reload --port 8000
+**Current performance (small.en + term bank):**
+- ~60% accuracy on League-specific terms
+- ~5 minutes processing per hour of audio (GPU)
+- Common mishears are auto-corrected (harold→herald, nasher→Nashor)
 
-Force CPU mode:
-    cd ~/projects/vodcomms
-    source .venv/bin/activate
-    cd backend
-    TRANSCRIBE_DEVICE=cpu python -m uvicorn main:app --reload --port 8000
+**Planned improvements:**
+- Fuzzy post-processing with RapidFuzz → 70-80% accuracy
+- Fine-tuned model (MVP 2.0) → 80-90% accuracy
 
-Backend API docs:
-- http://localhost:8000/docs
+**Why not 100%?**
+- Overlapping speech (teamfights)
+- Diverse accents and speaking styles
+- Non-standard terminology ("Nashie", "Eldorado")
+- Background noise and audio quality
 
+---
 
-## Docker quickstart
+## Project Structure
 
-From repo root:
-    docker compose up --build
+```
+vodcomms/
+├── backend/
+│   ├── main.py              # FastAPI app (sessions, transcription, search)
+│   ├── term_bank.json       # League-specific vocabulary (305 terms)
+│   ├── requirements.txt     # Python dependencies
+│   ├── data/                # SQLite DB + uploaded media
+│   └── .env.example         # Environment variables template
+├── frontend/
+│   ├── src/
+│   │   ├── App.jsx          # Main React component
+│   │   └── App.css          # Styling
+│   ├── package.json         # Node dependencies
+│   └── vite.config.js       # Vite configuration
+└── docs/
+    └── PRODUCT.md           # Full product roadmap and vision
+```
 
-Backend API docs:
-- http://localhost:8000/docs
+---
 
-Data persists under:
-- ./backend/data
+## Common Issues
 
-## Common issues
-- ffmpeg missing: install `ffmpeg` (see Dependencies section).
-- backend port already in use: stop the other process or change `--port 8000`.
-- SQLite DB location: `backend/data/app.sqlite`.
+**ffmpeg not found:**
+```bash
+sudo apt install -y ffmpeg
+```
 
-## Run frontend
+**Backend port already in use:**
+```bash
+# Stop the other process or change port:
+uvicorn main:app --reload --port 8001
+```
 
-    cd ~/projects/vodcomms/frontend
-    npm install
-    npm run dev
+**GPU not detected:**
+- Check NVIDIA driver: `nvidia-smi`
+- Verify CUDA installation: `nvcc --version`
+- Fall back to CPU: `TRANSCRIBE_DEVICE=cpu uvicorn main:app --reload`
 
-Frontend dev server:
-- http://localhost:5173
+**Transcription takes forever:**
+- Expected: ~5 min per hour of audio (GPU), ~20 min per hour (CPU)
+- Model size impacts speed: base.en (fastest) → small.en → medium.en (slowest)
 
-## Notes
-- The app stores transcripts/chunks locally in: backend/data/app.sqlite
-- Uploaded media and extracted audio are stored under: backend/data/
+**SQLite database location:**
+- `backend/data/app.sqlite`
+- Inspect with: `sqlite3 backend/data/app.sqlite`
+
+---
+
+## Docker (Alternative Setup)
+
+```bash
+docker compose up --build
+```
+
+- Backend: http://localhost:8000/docs
+- Data persists in `./backend/data/`
+
+---
+
+## Roadmap
+
+**MVP 1.0 (Current):** Complete local tool with search, transcription, and time filtering
+**MVP 1.5 (Next):** Speaker diarization, LLM-powered highlights, semantic search, multi-session search
+**MVP 2.0 (Future):** Production SaaS with teams, cloud hosting, fine-tuned models, live transcription
+
+See [PRODUCT.md](docs/PRODUCT.md) for detailed roadmap and feature priorities.
+
+---
+
+## Contributing
+
+This is a solo project in active development. Feedback and ideas welcome, but not accepting PRs at this time.
+
+For feature requests or bug reports, open an issue with:
+- What you were trying to do
+- What happened instead
+- Logs/screenshots if applicable
+
+---
+
+## License
+
+MIT License - see LICENSE file for details.
+
+---
+
+## Acknowledgments
+
+- **faster-whisper** for GPU-accelerated transcription
+- **SQLite FTS5** for blazing-fast full-text search
+- **FastAPI** for the clean Python backend
+- **React + Vite** for the snappy frontend
+
+Built for esports coaches who want to spend less time scrubbing VODs and more time coaching.
