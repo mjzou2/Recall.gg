@@ -1,6 +1,6 @@
 # RECALL.GG
 
-**A local-first esports VOD comms search and analytics tool for Leafue of Legends**
+**A local-first esports VOD comms search and analytics tool for League of Legends**
 
 ---
 
