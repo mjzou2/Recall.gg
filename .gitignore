@@ -22,3 +22,4 @@ backend/cuda-keyring_1.1-1_all.deb
 Dockerfile
 cudnn-local-repo-ubuntu2204-9.18.0_1.0-1_amd64.deb
 docker-compose.yml
+CLAUDE.md
