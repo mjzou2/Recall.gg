@@ -37,11 +37,12 @@ The foundation is search. The goal is team communication intelligence.
 
 **Media Processing:**
 - ✅ Upload audio (mp3, m4a, wav) or video (mp4, mkv, avi)
-- ✅ Automatic audio extraction from video files (ffmpeg)
+- ✅ Automatic audio extraction from video files (ffmpeg) with light denoising
 - ✅ GPU-accelerated transcription (faster-whisper + CUDA)
 - ✅ **League-specific term bank** (305 terms: champions, objectives, items, locations, mechanics)
-- ✅ Post-normalization for common mishears ("harold" → "herald")
-- ✅ ~60% accuracy on League terms, ~5 min per hour of audio
+- ✅ Post-normalization for common mishears (19 regex rules: apostrophe champions, abbreviations, etc.)
+- ✅ Fuzzy post-processing with RapidFuzz (auto-corrects against term bank, score_cutoff=82)
+- ✅ ~60% base accuracy on League terms, targeting 70-80% with fuzzy correction
 
 **Search & Navigation:**
 - ✅ **Keyword search** - Full-text search with BM25 ranking (SQLite FTS5)
@@ -55,7 +56,6 @@ The foundation is search. The goal is team communication intelligence.
 - ⚙️ Chunk inline editing (fix transcription errors)
 - ⚙️ Bookmarks/favorites (star important chunks)
 - ⚙️ Copy timestamp to clipboard
-- ⚙️ Fuzzy post-processing with RapidFuzz (target: 70-80% accuracy)
 - ⚙️ Demo video showing the app and its features at the end of MVP 1.0
 
 See [PRODUCT.md](docs/PRODUCT.md) for the full roadmap (MVP 1.5, 2.0).
@@ -94,6 +94,8 @@ pip install -r requirements.txt
 WHISPER_MODEL=small.en
 TRANSCRIBE_DEVICE=cuda  # or 'cpu' if no GPU
 DISABLE_LOL_NORMALIZE=0
+DISABLE_FUZZY_CORRECT=0
+DISABLE_AUDIO_DENOISE=0
 ```
 
 **3. Start backend:**
@@ -127,7 +129,7 @@ Frontend: http://localhost:5173
 
 ## Technical Stack
 
-- **Backend:** FastAPI (Python), SQLite with FTS5, faster-whisper, ffmpeg
+- **Backend:** FastAPI (Python), SQLite with FTS5, faster-whisper, ffmpeg, RapidFuzz
 - **Frontend:** React + Vite
 - **Environment:** WSL2, GPU-accelerated (CUDA 12.9), local-first (no cloud)
 - **Data:** All sessions/chunks/audio stored locally in `backend/data/`
@@ -136,13 +138,14 @@ Frontend: http://localhost:5173
 
 ## Transcription Accuracy
 
-**Current performance (small.en + term bank):**
-- ~60% accuracy on League-specific terms
+**Current performance (small.en + term bank + fuzzy correction):**
+- ~60% base accuracy on League-specific terms, targeting 70-80% with post-processing
 - ~5 minutes processing per hour of audio (GPU)
-- Common mishears are auto-corrected (harold→herald, nasher→Nashor)
+- 19 regex rules auto-correct common mishears (harold→herald, word→ward, apostrophe champions, etc.)
+- RapidFuzz fuzzy matching corrects close-spelling errors against term bank (score_cutoff=82)
+- Light audio denoising via ffmpeg (highpass + lowpass + noise reduction)
 
 **Planned improvements:**
-- Fuzzy post-processing with RapidFuzz → 70-80% accuracy
 - Fine-tuned model (MVP 2.0) → 80-90% accuracy
 
 **Why not 100%?**

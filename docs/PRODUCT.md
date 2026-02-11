@@ -27,16 +27,16 @@ Most VOD tools parse **game events** (kills, objectives, gold). RECALL.GG parses
 
 **Media Processing:**
 - ✓ Upload audio (mp3/m4a/wav) and video (mp4/mkv/avi)
-- ✓ Audio extraction via ffmpeg
+- ✓ Audio extraction via ffmpeg with light denoising (highpass + lowpass + afftdn)
 - ✓ Transcription pipeline:
   - ✓ faster-whisper with GPU support (CUDA)
   - ✓ League-specific term bank (300+ terms: champions, objectives, comms vocabulary)
   - ✓ Contextual initial_prompt + hotwords for domain accuracy
   - ✓ Model selection (base/small/medium) - currently using small.en
-  - ✓ Post-normalization for common mishears (harold→herald, etc.)
-  - ⚙️ **Fuzzy post-processing with RapidFuzz** - correct remaining errors against term bank
-  - ✓ Achieves ~60% accuracy on League terms, ~5 min per hour of audio
-  - ⚙️ Target with fuzzy processing: 70-80% accuracy
+  - ✓ Post-normalization for common mishears (19 regex rules: apostrophe champions, abbreviations, etc.)
+  - ✓ **Fuzzy post-processing with RapidFuzz** - auto-corrects against term bank (score_cutoff=82)
+  - ✓ Achieves ~60% base accuracy on League terms, ~5 min per hour of audio
+  - ✓ Target with fuzzy processing: 70-80% accuracy
 - ✓ Chunk storage with timestamps in SQLite
 
 **Search & Navigation:**
@@ -188,7 +188,7 @@ Most VOD tools parse **game events** (kills, objectives, gold). RECALL.GG parses
 2. ⚙️ **Manual chunk annotations** - notes field (2-3 hours)
 3. ⚙️ **Chunk inline editing** - fix transcription errors (2-3 hours)
 4. ⚙️ **Bookmarks/favorites** - star chunks (1-2 hours)
-5. ⚙️ **Fuzzy post-processing** - RapidFuzz correction (1-2 hours)
+5. ✓ **Fuzzy post-processing** - RapidFuzz correction
 6. ⚙️ **Synonym expansion** - hardcoded alias map for search (1-2 hours)
 7. ⚙️ **Demo preparation** - record video, write README, polish UI (2-4 hours)
 
@@ -213,8 +213,7 @@ Most VOD tools parse **game events** (kills, objectives, gold). RECALL.GG parses
 
 **Transcription Accuracy:**
 - Base Whisper model: ~30% accuracy on League terms
-- Current (small.en + term bank): ~60% accuracy on League terms
-- With fuzzy post-processing: Target 70-80% accuracy
+- Current (small.en + term bank + fuzzy): ~60% base, targeting 70-80% with post-processing
 - Overlapping speech and diverse accents reduce accuracy further
 - Fine-tuning could reach 80-90% but requires significant data collection effort
 
