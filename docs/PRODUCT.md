@@ -22,7 +22,7 @@ Most VOD tools parse **game events** (kills, objectives, gold). RECALL.GG parses
 
 **Session Management:**
 - ✓ Create, list, edit, delete sessions
-- ⚙️ Session notes field (add context/description)
+- ✓ Session notes field (add context/description)
 - ✓ Processing duration tracking
 
 **Media Processing:**
@@ -42,8 +42,12 @@ Most VOD tools parse **game events** (kills, objectives, gold). RECALL.GG parses
 **Search & Navigation:**
 - ✓ Keyword search with FTS5 + BM25 ranking
 - ✓ Time range filtering (filter chunks by MM:SS game time)
+- ⚙️ **Synonym expansion** - Hardcoded alias map for League-specific terms
+  - e.g. searching "baron" also matches "Nashor", "Nash"
+  - e.g. searching "herald" also matches "Shelly"
+  - Expands FTS query tokens before hitting SQLite, no new dependencies
 - ✓ Clickable timestamps (open YouTube URL at exact moment)
-- ⚙️ Copy timestamp to clipboard
+- ✓ Copy timestamp to clipboard
 
 **Playback:**
 - ⚙️ **Embedded YouTube player with bidirectional sync**
@@ -185,7 +189,8 @@ Most VOD tools parse **game events** (kills, objectives, gold). RECALL.GG parses
 3. ⚙️ **Chunk inline editing** - fix transcription errors (2-3 hours)
 4. ⚙️ **Bookmarks/favorites** - star chunks (1-2 hours)
 5. ⚙️ **Fuzzy post-processing** - RapidFuzz correction (1-2 hours)
-6. **Demo preparation** - record video, write README, polish UI (2-4 hours)
+6. ⚙️ **Synonym expansion** - hardcoded alias map for search (1-2 hours)
+6. ⚙️ **Demo preparation** - record video, write README, polish UI (2-4 hours)
 
 **Total estimated: 12-20 hours → Target: Demo-ready by end of week**
 
