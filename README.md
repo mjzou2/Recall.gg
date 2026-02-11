@@ -13,7 +13,7 @@ In esports, coaches and teams need to review and discuss key moments in their pr
 1. **Upload** your scrim VOD with audio
 2. **Process** with GPU-accelerated transcription in minutes
 3. **Search** for any keyword - "Baron", "dive mid", "flash", "reset"
-4. **Jump** directly to that moment in your YouTube VOD with one click
+4. **Jump** directly to that moment in the embedded YouTube player with one click
 
 Gone are the days of manually scrubbing through a 5+ hour VOD. Now you can find the moments that matter in seconds.
 
@@ -47,15 +47,21 @@ The foundation is search. The goal is team communication intelligence.
 **Search & Navigation:**
 - ✅ **Keyword search** - Full-text search with BM25 ranking (SQLite FTS5)
 - ✅ **Time range filtering** - Filter chunks by game time (MM:SS format)
-- ✅ Clickable timestamps - Jump to exact moment in YouTube VOD
-- ✅ Pagination and chunk expansion
+- ✅ **Embedded YouTube player** - Click timestamps to seek player instantly
+- ✅ **Tab-based sidebar** - Switch between Sessions and Explore (transcript) views
+- ✅ Pagination and chunk expansion (clickable text)
+- ✅ Copy timestamp URL to clipboard
+
+**UI/UX:**
+- ✅ **Dark theme** - Sleek purple-accented design inspired by Linear/Vercel
+- ✅ Chronological chunk flow with minimal visual separation
+- ✅ Maximized player size for screensharing/presentation
 
 **In-progress:**
-- ⚙️ Embedded YouTube player with bidirectional sync
+- ⚙️ Player position sync (highlight active chunk as video plays)
 - ⚙️ Manual chunk annotations (add coach notes to chunks)
 - ⚙️ Chunk inline editing (fix transcription errors)
 - ⚙️ Bookmarks/favorites (star important chunks)
-- ⚙️ Copy timestamp to clipboard
 - ⚙️ Demo video showing the app and its features at the end of MVP 1.0
 
 See [PRODUCT.md](docs/PRODUCT.md) for the full roadmap (MVP 1.5, 2.0).
@@ -118,12 +124,13 @@ Frontend: http://localhost:5173
 
 ## Usage
 
-1. **Create a session** - Give it a title and optional YouTube URL
+1. **Create a session** - Give it a title and YouTube URL for playback
 2. **Upload audio/video** - Drop your scrim recording (or extract from OBS/Discord)
 3. **Process** - Click "Process" to start transcription (~5 min per hour of audio)
-4. **Search** - Enter keywords like "Baron", "dive mid", "reset"
-5. **Filter by time** - Enter start/end time (e.g., "5:00" to "10:00") to narrow results
-6. **Jump to VOD** - Click chunk timestamps to open YouTube at that exact moment
+4. **Explore** - Switch to Explore tab to view the searchable transcript
+5. **Search** - Enter keywords like "Baron", "dive mid", "reset"
+6. **Filter by time** - Enter start/end time (e.g., "5:00" to "10:00") to narrow results
+7. **Seek** - Click chunk timestamps to seek the embedded YouTube player instantly
 
 ---
 
@@ -168,8 +175,8 @@ vodcomms/
 │   └── .env.example         # Environment variables template
 ├── frontend/
 │   ├── src/
-│   │   ├── App.jsx          # Main React component
-│   │   └── App.css          # Styling
+│   │   ├── App.jsx          # Main React component (~913 lines)
+│   │   └── App.css          # Dark theme styling with purple accents
 │   ├── package.json         # Node dependencies
 │   └── vite.config.js       # Vite configuration
 └── docs/

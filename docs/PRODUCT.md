@@ -46,14 +46,19 @@ Most VOD tools parse **game events** (kills, objectives, gold). RECALL.GG parses
   - e.g. searching "baron" also matches "Nashor", "Nash"
   - e.g. searching "herald" also matches "Shelly"
   - Expands FTS query tokens before hitting SQLite, no new dependencies
-- ✓ Clickable timestamps (open YouTube URL at exact moment)
-- ✓ Copy timestamp to clipboard
+- ✓ Clickable timestamps (seek embedded player instantly)
+- ✓ Copy timestamp URL to clipboard
+- ✓ Tab-based sidebar (Sessions / Explore tabs)
+- ✓ Chronological chunk ordering with minimal visual separation
 
 **Playback:**
-- ⚙️ **Embedded YouTube player with bidirectional sync**
-  - Click chunk → player jumps to timestamp
-  - Player reaches chunk → chunk highlights in list
-  - Seamless in-app playback, no tab switching
+- ✓ **Embedded YouTube player with iframe API**
+  - Click chunk timestamp → player seeks to that moment
+  - Maximized player size for screensharing/presentation
+  - YouTube iframe API integration with React
+- ⚙️ **Player position sync** (bidirectional)
+  - Player reaches chunk → chunk highlights in transcript
+  - Track playback position for active chunk highlighting
 
 **Chunk Interaction:**
 - ⚙️ **Manual chunk annotations** - Add coach notes to specific chunks
@@ -66,7 +71,7 @@ Most VOD tools parse **game events** (kills, objectives, gold). RECALL.GG parses
 
 ### Technical Stack
 - **Backend:** FastAPI (Python), SQLite with FTS5, faster-whisper, ffmpeg, RapidFuzz
-- **Frontend:** React + Vite, minimal styling (polish planned)
+- **Frontend:** React + Vite, dark theme with purple accents (Linear/Vercel aesthetic)
 - **Environment:** WSL2, GPU-accelerated (CUDA 12.9), local-first (no cloud)
 - **Data:** All sessions/chunks/audio stored locally in `backend/data/`
 
@@ -184,19 +189,22 @@ Most VOD tools parse **game events** (kills, objectives, gold). RECALL.GG parses
 ## Development Roadmap
 
 ### Immediate Next Steps (MVP 1.0 Completion - 2-3 days)
-1. ⚙️ **Embedded YouTube player with bidirectional sync** (4-6 hours)
-2. ⚙️ **Manual chunk annotations** - notes field (2-3 hours)
-3. ⚙️ **Chunk inline editing** - fix transcription errors (2-3 hours)
-4. ⚙️ **Bookmarks/favorites** - star chunks (1-2 hours)
-5. ✓ **Fuzzy post-processing** - RapidFuzz correction
-6. ⚙️ **Synonym expansion** - hardcoded alias map for search (1-2 hours)
-7. ⚙️ **Demo preparation** - record video, write README, polish UI (2-4 hours)
+1. ✓ **Embedded YouTube player** - iframe API integration with seeking
+2. ✓ **Dark theme UI** - purple-accented design inspired by Linear/Vercel
+3. ✓ **Tab-based sidebar** - Sessions / Explore navigation
+4. ⚙️ **Player position sync** - highlight active chunk during playback (2-3 hours)
+5. ⚙️ **Manual chunk annotations** - notes field (2-3 hours)
+6. ⚙️ **Chunk inline editing** - fix transcription errors (2-3 hours)
+7. ⚙️ **Bookmarks/favorites** - star chunks (1-2 hours)
+8. ✓ **Fuzzy post-processing** - RapidFuzz correction
+9. ⚙️ **Synonym expansion** - hardcoded alias map for search (1-2 hours)
+10. ⚙️ **Demo preparation** - record video, write README (2-4 hours)
 
 **Total estimated: 12-20 hours → Target: Demo-ready by end of week**
 
 ### Post-Demo Priorities (Driven by User Feedback)
 - Code refactor (split main.py and App.jsx into modules)
-- Frontend polish (component library, dark mode, consistent styling)
+- Component library / light mode toggle (dark mode done)
 - Real-time progress bar for transcription
 - Evaluation harness for measuring transcription quality improvements
 
