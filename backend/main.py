@@ -342,7 +342,9 @@ def search_chunks(session_id: str, payload: SearchRequest) -> Dict[str, List[Dic
         # Case 1: Keyword only (existing behavior)
         if query and start_time_ms is None:
             tokens = [token for token in query.split() if token]
-            fts_query = " ".join(f"{token}*" for token in tokens)
+            # Sanitize tokens: remove FTS5 special chars (apostrophes, quotes, parens, etc.)
+            sanitized_tokens = [re.sub(r"['\"\(\)]", "", token) for token in tokens if token]
+            fts_query = " ".join(f"{token}*" for token in sanitized_tokens if token)
 
             rows = conn.execute(
                 """
@@ -351,7 +353,7 @@ def search_chunks(session_id: str, payload: SearchRequest) -> Dict[str, List[Dic
                 JOIN chunks c ON c.rowid = f.rowid
                 WHERE f.session_id = ?
                   AND chunks_fts MATCH ?
-                ORDER BY bm25(chunks_fts)
+                ORDER BY c.start_ms
                 LIMIT ?
                 """,
                 (session_id, fts_query, limit),
@@ -375,7 +377,9 @@ def search_chunks(session_id: str, payload: SearchRequest) -> Dict[str, List[Dic
         # Case 3: Combined keyword + time range
         else:  # query and start_time_ms is not None
             tokens = [token for token in query.split() if token]
-            fts_query = " ".join(f"{token}*" for token in tokens)
+            # Sanitize tokens: remove FTS5 special chars (apostrophes, quotes, parens, etc.)
+            sanitized_tokens = [re.sub(r"['\"\(\)]", "", token) for token in tokens if token]
+            fts_query = " ".join(f"{token}*" for token in sanitized_tokens if token)
 
             rows = conn.execute(
                 """
@@ -386,7 +390,7 @@ def search_chunks(session_id: str, payload: SearchRequest) -> Dict[str, List[Dic
                   AND chunks_fts MATCH ?
                   AND c.start_ms < ?
                   AND c.end_ms > ?
-                ORDER BY bm25(chunks_fts)
+                ORDER BY c.start_ms
                 LIMIT ?
                 """,
                 (session_id, fts_query, end_time_ms, start_time_ms, limit),

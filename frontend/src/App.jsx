@@ -65,6 +65,24 @@ const buildYoutubeUrlWithTimestamp = (baseUrl, startMs) => {
   }
 }
 
+const extractYoutubeVideoId = (url) => {
+  if (!url) return null
+  try {
+    const parsed = new URL(url)
+    // Handle youtube.com/watch?v=VIDEO_ID
+    if (parsed.hostname.includes('youtube.com') && parsed.searchParams.has('v')) {
+      return parsed.searchParams.get('v')
+    }
+    // Handle youtu.be/VIDEO_ID
+    if (parsed.hostname === 'youtu.be') {
+      return parsed.pathname.slice(1) // Remove leading slash
+    }
+  } catch {
+    // Invalid URL
+  }
+  return null
+}
+
 function App() {
   const [title, setTitle] = useState('')
   const [youtubeUrl, setYoutubeUrl] = useState('')
@@ -94,6 +112,9 @@ function App() {
   const [editYoutubeUrl, setEditYoutubeUrl] = useState('')
   const [editNotes, setEditNotes] = useState('')
   const [elapsedSeconds, setElapsedSeconds] = useState(0)
+  const [sidebarTab, setSidebarTab] = useState('sessions')
+  const [youtubePlayer, setYoutubePlayer] = useState(null)
+  const [isYoutubeApiReady, setIsYoutubeApiReady] = useState(false)
 
   const pageSize = 25
   const canSearch = Boolean(sessionId)
@@ -122,6 +143,71 @@ function App() {
     // Cleanup: clear interval when processing ends or component unmounts
     return () => clearInterval(interval)
   }, [isProcessing])
+
+  // Load YouTube iframe API
+  useEffect(() => {
+    // Check if API is already loaded
+    if (window.YT && window.YT.Player) {
+      setIsYoutubeApiReady(true)
+      return
+    }
+
+    // Load the API script if not already present
+    if (!window.YT) {
+      const tag = document.createElement('script')
+      tag.src = 'https://www.youtube.com/iframe_api'
+      const firstScriptTag = document.getElementsByTagName('script')[0]
+      firstScriptTag.parentNode.insertBefore(tag, firstScriptTag)
+    }
+
+    // Set up the callback for when API is ready
+    window.onYouTubeIframeAPIReady = () => {
+      setIsYoutubeApiReady(true)
+    }
+  }, [])
+
+  // Initialize YouTube player when session loads with youtube_url
+  useEffect(() => {
+    // Clean up existing player
+    if (youtubePlayer && youtubePlayer.destroy) {
+      youtubePlayer.destroy()
+      setYoutubePlayer(null)
+    }
+
+    // Check if we have everything needed to create a player
+    if (!sessionDetails?.youtube_url || !isYoutubeApiReady) {
+      return
+    }
+
+    const videoId = extractYoutubeVideoId(sessionDetails.youtube_url)
+    if (!videoId) {
+      console.warn('Could not extract video ID from:', sessionDetails.youtube_url)
+      return
+    }
+
+    // Create the player
+    const player = new window.YT.Player('youtube-player', {
+      videoId: videoId,
+      width: '100%',
+      height: '100%',
+      playerVars: {
+        autoplay: 0,
+        modestbranding: 1,
+      },
+      events: {
+        onReady: (event) => {
+          setYoutubePlayer(event.target)
+        },
+      },
+    })
+
+    // Cleanup on unmount or session change
+    return () => {
+      if (player && player.destroy) {
+        player.destroy()
+      }
+    }
+  }, [sessionDetails?.youtube_url, isYoutubeApiReady])
 
   const resetChunkViews = () => {
     setPageIndex(0)
@@ -156,6 +242,22 @@ function App() {
       setTimeout(() => setCopiedChunkId(null), 2000) // Clear after 2 seconds
     } catch (err) {
       console.error('Failed to copy:', err)
+    }
+  }
+
+  const handleTimestampClick = (startMs) => {
+    if (youtubePlayer && youtubePlayer.seekTo) {
+      const seconds = Math.floor(startMs / 1000)
+      youtubePlayer.seekTo(seconds, true)
+    } else {
+      // Fallback to opening in new tab if player not available
+      const youtubeLink = buildYoutubeUrlWithTimestamp(
+        sessionDetails?.youtube_url,
+        startMs
+      )
+      if (youtubeLink) {
+        window.open(youtubeLink, '_blank')
+      }
     }
   }
 
@@ -460,6 +562,24 @@ function App() {
 
       <section className="main-layout">
         <div className="left-column">
+          <div className="sidebar-tabs">
+            <button
+              className={sidebarTab === 'sessions' ? 'active' : ''}
+              onClick={() => setSidebarTab('sessions')}
+            >
+              Sessions
+            </button>
+            <button
+              className={sidebarTab === 'explore' ? 'active' : ''}
+              onClick={() => setSidebarTab('explore')}
+            >
+              Explore
+            </button>
+          </div>
+
+          <div className="sidebar-content">
+          {sidebarTab === 'sessions' && (
+          <div className="sessions-tab">
           <div className="left-scroll">
             <section className="panel">
               <div className="panel-header">
@@ -715,186 +835,196 @@ function App() {
                 )}
               </section>
             )}
-            <section className="panel">
-              <div className="panel-header">
-                <div>
-                  <p className="eyebrow">Search</p>
-                  <h2>Keyword lookup</h2>
-                </div>
-              </div>
-              <div className="stack">
-                <input
-                  type="text"
-                  placeholder={'reset / baron / "we should"'}
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  disabled={!canSearch}
-                />
-                <div className="time-range-fields">
-                  <label className="field">
-                    <span>Start time</span>
-                    <input
-                      type="text"
-                      placeholder="MM:SS"
-                      value={startTime}
-                      onChange={(e) => {
-                        setStartTime(e.target.value)
-                        setTimeRangeError('')
-                      }}
-                      disabled={!canSearch}
-                    />
-                  </label>
-                  <label className="field">
-                    <span>End time</span>
-                    <input
-                      type="text"
-                      placeholder="MM:SS"
-                      value={endTime}
-                      onChange={(e) => {
-                        setEndTime(e.target.value)
-                        setTimeRangeError('')
-                      }}
-                      disabled={!canSearch}
-                    />
-                  </label>
-                </div>
-                {timeRangeError && (
-                  <span className="hint danger">{timeRangeError}</span>
-                )}
-                <div className="actions">
+          </div>
+          </div>
+          )}
+
+          {sidebarTab === 'explore' && (
+          <div className="search-tab">
+            <div className="search-controls">
+              <input
+                type="text"
+                className="search-input"
+                placeholder={'Search: reset / baron / "we should"'}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && canSearch) {
+                    handleSearch()
+                  }
+                }}
+                disabled={!canSearch}
+              />
+              <div className="search-filters-row">
+                <div className="search-filters">
+                  <input
+                    type="text"
+                    className="time-input"
+                    placeholder="Start"
+                    value={startTime}
+                    onChange={(e) => {
+                      setStartTime(e.target.value)
+                      setTimeRangeError('')
+                    }}
+                    disabled={!canSearch}
+                  />
+                  <span className="time-separator">to</span>
+                  <input
+                    type="text"
+                    className="time-input"
+                    placeholder="End"
+                    value={endTime}
+                    onChange={(e) => {
+                      setEndTime(e.target.value)
+                      setTimeRangeError('')
+                    }}
+                    disabled={!canSearch}
+                  />
                   <button
                     type="button"
+                    className="action-btn"
                     onClick={handleSearch}
                     disabled={!canSearch}
                   >
-                    Search
+                    Go
                   </button>
                   <button
                     type="button"
-                    className="ghost"
+                    className="action-btn ghost"
                     onClick={handleClearSearch}
                     disabled={!canSearch}
                   >
                     Clear
                   </button>
                 </div>
-                {!canSearch && (
-                  <span className="hint">Select a session to search.</span>
+                {sessionId && (
+                  <span className="search-status">
+                    {isSearching ? (
+                      <>
+                        Results: {chunks.length}
+                        {lastQuery && ` (${lastQuery})`}
+                        {lastTimeRange && ` (${lastTimeRange})`}
+                      </>
+                    ) : (
+                      `${chunks.length} chunks`
+                    )}
+                  </span>
                 )}
               </div>
-            </section>
+              {timeRangeError && (
+                <span className="hint danger">{timeRangeError}</span>
+              )}
+              {!canSearch && (
+                <span className="hint">Select a session to search</span>
+              )}
+            </div>
+
+            {!sessionId && (
+              <p className="hint">Select a session to view chunks.</p>
+            )}
+            {sessionId && chunks.length === 0 && (
+              <p className="hint">No chunks yet. Process the uploaded file.</p>
+            )}
+            {sessionId && chunks.length > 0 && (
+              <div className="pagination">
+                <div className="actions">
+                  <button
+                    type="button"
+                    className="action-btn ghost"
+                    onClick={() => setPageIndex((prev) => Math.max(0, prev - 1))}
+                    disabled={pageIndex === 0}
+                  >
+                    Prev
+                  </button>
+                  <button
+                    type="button"
+                    className="action-btn ghost"
+                    onClick={() =>
+                      setPageIndex((prev) => Math.min(totalPages - 1, prev + 1))
+                    }
+                    disabled={pageIndex >= totalPages - 1}
+                  >
+                    Next
+                  </button>
+                </div>
+                <span className="hint">
+                  Page {pageIndex + 1} / {totalPages}
+                </span>
+              </div>
+            )}
+            <div className="chunk-list">
+              {pageChunks.map((chunk) => {
+                const chunkKey =
+                  chunk.id ??
+                  `${chunk.start_ms}-${chunk.end_ms}-${chunk.text?.length ?? 0}`
+                const isExpanded = expandedChunkIds.has(chunkKey)
+                const previewText = getPreviewText(chunk.text || '')
+                const youtubeLink = buildYoutubeUrlWithTimestamp(
+                  sessionDetails?.youtube_url,
+                  chunk.start_ms
+                )
+                return (
+                  <div key={chunkKey} className="chunk">
+                    <div className="chunk-header">
+                      {sessionDetails?.youtube_url ? (
+                        <button
+                          type="button"
+                          className="chunk-times chunk-times-link"
+                          onClick={() => handleTimestampClick(chunk.start_ms)}
+                        >
+                          <span>{formatTime(chunk.start_ms)}</span>
+                          <span>→</span>
+                          <span>{formatTime(chunk.end_ms)}</span>
+                        </button>
+                      ) : (
+                        <div className="chunk-times">
+                          <span>{formatTime(chunk.start_ms)}</span>
+                          <span>→</span>
+                          <span>{formatTime(chunk.end_ms)}</span>
+                        </div>
+                      )}
+                      {youtubeLink && (
+                        <button
+                          type="button"
+                          className="copy-btn"
+                          onClick={() => handleCopyTimestamp(chunkKey, youtubeLink)}
+                          title="Copy timestamp URL"
+                        >
+                          {copiedChunkId === chunkKey ? '✓ Copied' : 'Copy'}
+                        </button>
+                      )}
+                    </div>
+                    <p
+                      className="chunk-text"
+                      onClick={() => toggleChunkExpanded(chunkKey)}
+                      title={isExpanded ? 'Click to collapse' : 'Click to expand'}
+                    >
+                      {isExpanded ? chunk.text : previewText}
+                    </p>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+          )}
           </div>
         </div>
 
-        <section className="panel chunks-panel">
-          <div className="panel-header">
-            <div>
-              <p className="eyebrow">Chunks</p>
-              <h2>Transcript timeline</h2>
+        <div className="main-content">
+          {sessionDetails?.youtube_url ? (
+            <div className="youtube-player-container">
+              <div id="youtube-player"></div>
             </div>
-          </div>
-          {!sessionId && (
-            <p className="hint">Select a session to view generated chunks.</p>
-          )}
-          {sessionId && chunks.length === 0 && (
-            <p className="hint">No chunks yet. Process the uploaded file.</p>
-          )}
-          {sessionId && (
-            <p className="hint">
-              {isSearching ? (
-                <>
-                  Results: {chunks.length}
-                  {lastQuery && ` (keyword: ${lastQuery})`}
-                  {lastTimeRange && ` (time: ${lastTimeRange})`}
-                </>
-              ) : (
-                `Showing all chunks: ${chunks.length}`
-              )}
-            </p>
-          )}
-          {sessionId && chunks.length > 0 && (
-            <div className="pagination">
-              <div className="actions">
-                <button
-                  type="button"
-                  className="ghost"
-                  onClick={() => setPageIndex((prev) => Math.max(0, prev - 1))}
-                  disabled={pageIndex === 0}
-                >
-                  Prev
-                </button>
-                <button
-                  type="button"
-                  className="ghost"
-                  onClick={() =>
-                    setPageIndex((prev) => Math.min(totalPages - 1, prev + 1))
-                  }
-                  disabled={pageIndex >= totalPages - 1}
-                >
-                  Next
-                </button>
-              </div>
-              <span className="hint">
-                Page {pageIndex + 1} / {totalPages}
-              </span>
+          ) : (
+            <div className="no-player-message">
+              <p className="hint">
+                {sessionId
+                  ? 'This session has no YouTube URL. Add one in the Sessions tab to see the embedded player.'
+                  : 'Select a session with a YouTube URL to view the player.'}
+              </p>
             </div>
           )}
-          <div className="chunk-list">
-            {pageChunks.map((chunk) => {
-              const chunkKey =
-                chunk.id ??
-                `${chunk.start_ms}-${chunk.end_ms}-${chunk.text?.length ?? 0}`
-              const isExpanded = expandedChunkIds.has(chunkKey)
-              const previewText = getPreviewText(chunk.text || '')
-              const youtubeLink = buildYoutubeUrlWithTimestamp(
-                sessionDetails?.youtube_url,
-                chunk.start_ms
-              )
-              return (
-                <div key={chunkKey} className="chunk">
-                  <div className="chunk-header">
-                    {youtubeLink ? (
-                      <a
-                        href={youtubeLink}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="chunk-times chunk-times-link"
-                      >
-                        <span>{formatTime(chunk.start_ms)}</span>
-                        <span>→</span>
-                        <span>{formatTime(chunk.end_ms)}</span>
-                      </a>
-                    ) : (
-                      <div className="chunk-times">
-                        <span>{formatTime(chunk.start_ms)}</span>
-                        <span>→</span>
-                        <span>{formatTime(chunk.end_ms)}</span>
-                      </div>
-                    )}
-                    {youtubeLink && (
-                      <button
-                        type="button"
-                        className="copy-btn"
-                        onClick={() => handleCopyTimestamp(chunkKey, youtubeLink)}
-                        title="Copy timestamp URL"
-                      >
-                        {copiedChunkId === chunkKey ? '✓ Copied' : 'Copy'}
-                      </button>
-                    )}
-                  </div>
-                  <p>{isExpanded ? chunk.text : previewText}</p>
-                  <button
-                    type="button"
-                    className="ghost"
-                    onClick={() => toggleChunkExpanded(chunkKey)}
-                  >
-                    {isExpanded ? 'Collapse' : 'Expand'}
-                  </button>
-                </div>
-              )
-            })}
-          </div>
-        </section>
+        </div>
       </section>
     </div>
   )
