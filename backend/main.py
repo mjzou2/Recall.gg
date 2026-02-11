@@ -453,20 +453,32 @@ def extract_audio(session_id: str, media_path: Path) -> Path:
     if media_path.suffix.lower() in {".wav", ".mp3", ".m4a", ".ogg", ".flac"}:
         return media_path
 
+    # Light denoise filter chain for noisy Discord comms:
+    #   highpass=f=200   — cut low rumble/hum below 200Hz
+    #   lowpass=f=3500   — cut hiss/static above 3500Hz (voice comms don't need higher)
+    #   afftdn=nf=-25    — gentle FFT-based noise reduction (lower = more aggressive)
+    denoise = os.environ.get("DISABLE_AUDIO_DENOISE", "0") != "1"
+    af_filter = "highpass=f=200,lowpass=f=3500,afftdn=nf=-25" if denoise else None
+
     try:
-        subprocess.run(
-            [
+        cmd = [
                 "ffmpeg",
                 "-y",
                 "-i",
                 str(media_path),
                 "-vn",
+        ]
+        if af_filter:
+            cmd += ["-af", af_filter]
+        cmd += [
                 "-acodec",
                 "pcm_s16le",
                 "-ar",
                 "16000",
                 str(audio_path),
-            ],
+        ]
+        subprocess.run(
+            cmd,
             capture_output=True,
             check=True,
         )
@@ -505,12 +517,26 @@ def get_transcriber() -> WhisperModel:
 
 def normalize_lol_text(text: str) -> str:
     replacements = [
+        # Common Whisper mishears
         (r"\bharold\b", "herald"),
-        (r"\bword(s)?\b", r"ward\1"),
-        (r"\bdrakes?\b", "drake"),
-        (r"\bksante\b", "K'Sante"),
+        (r"\bword(s|ing|ed)?\b", r"ward\1"),
+        # Severe mishears fuzzy matching can't catch (score < 82)
+        (r"\bcass?ante\b", "K'Sante"),
+        # Space-separated apostrophe champions (parts too short for fuzzy)
         (r"\bk sante\b", "K'Sante"),
+        (r"\bksante\b", "K'Sante"),
+        (r"\bkha zix\b", "Kha'Zix"),
+        (r"\bcho gath\b", "Cho'Gath"),
+        (r"\bbel veth\b", "Bel'Veth"),
+        (r"\bvel koz\b", "Vel'Koz"),
+        (r"\bkog maw\b", "Kog'Maw"),
+        (r"\brek sai\b", "Rek'Sai"),
+        (r"\bkai sa\b", "Kai'Sa"),
+        # Short abbreviations (< 4 chars, fuzzy skips)
         (r"\btp\b", "TP"),
+        (r"\bcc\b", "CC"),
+        (r"\bcs\b", "CS"),
+        (r"\badc\b", "ADC"),
     ]
     normalized = text
     for pattern, replacement in replacements:
