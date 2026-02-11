@@ -28,6 +28,7 @@ onnxruntime==1.23.2
 packaging==25.0
 protobuf==6.33.2
 pydantic==2.12.5
+rapidfuzz>=3.0.0
 pydantic_core==2.41.5
 python-dotenv==1.2.1
 python-multipart==0.0.21
