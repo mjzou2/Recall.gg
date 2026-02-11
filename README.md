@@ -1,6 +1,6 @@
 # RECALL.GG
 
-**A local-first esports VOD comms search and analytics tool**
+**A local-first esports VOD comms search and analytics tool for LoL**
 
 ---
 
@@ -11,7 +11,7 @@ In esports, coaches and teams need to review and discuss key moments in their pr
 ## The Solution (Now)
 
 1. **Upload** your scrim VOD with audio
-2. **Process** with GPU-accelerated transcription (built for League terminology)
+2. **Process** with GPU-accelerated transcription in minutes
 3. **Search** for any keyword - "Baron", "dive mid", "flash", "reset"
 4. **Jump** directly to that moment in your YouTube VOD with one click
 
