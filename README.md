@@ -1,23 +1,31 @@
 # RECALL.GG
 
-**Local-first esports VOD comms search and decision archaeology tool.**
+**A local-first esports VOD comms search and analytics tool**
 
-Turn hours of scrim voice comms into a searchable, timestamped knowledge base. Find any moment, decision, or callout in seconds.
-
----
-
-## What This Does
-
-Most VOD tools parse **game events** (kills, objectives, gold). RECALL.GG parses **human decisions** from voice comms:
-- Plan formation: "we should Baron after this wave"
-- Plan evolution: "no wait, they have TP, let's reset"
-- Conflicts and attribution: "I called the dive", "my bad, I didn't see"
-
-**The problem:** Coaches spend hours scrubbing through VODs trying to find specific callouts or decisions. Manual note-taking is slow and incomplete.
-
-**The solution:** Upload audio, get instant search. Find every mention of "Baron" across a 45-minute scrim in 5 seconds. Jump directly to the timestamp in the YouTube VOD.
+Upload your VOD, search for any callout or moment, and jump straight to the timestamp. Built for coaches who want to spend less time scrubbing through 45-minute recordings and more time reviewing what matters.
 
 ---
+
+## The Problem
+
+After a scrim, coaches need to review key moments: the Baron call, the mid dive, the late-game shotcalling. But finding these moments means manually scrubbing through the entire VOD, trying to remember when things happened. And beyond just finding moments, there's no easy way to analyze patterns, track decision-making, or measure communication quality over time.
+
+## The Solution (Now)
+
+1. **Upload** your scrim audio or video
+2. **Process** with GPU-accelerated transcription (built for League terminology)
+3. **Search** for any keyword - "Baron", "dive mid", "flash", "reset"
+4. **Jump** directly to that moment in your YouTube VOD with one click
+
+## The Vision (Next)
+
+Once you can search your comms, you can analyze them:
+- Track how often your team communicates during objective fights
+- Surface the most critical moments automatically with LLM-powered analysis
+- Visualize communication intensity across the game timeline
+- Identify patterns in decision-making and shotcalling
+
+The foundation is search. The goal is team communication intelligence.
 
 ## Current Features (MVP 1.0)
 
@@ -237,5 +245,3 @@ MIT License - see LICENSE file for details.
 - **SQLite FTS5** for blazing-fast full-text search
 - **FastAPI** for the clean Python backend
 - **React + Vite** for the snappy frontend
-
-Built for esports coaches who want to spend less time scrubbing VODs and more time coaching.
