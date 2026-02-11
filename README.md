@@ -6,7 +6,7 @@
 
 ## The Problem
 
-In esports, coaches and teams need to review and discuss key moments in their practice. But finding these moments usually means manually scrubbing through an entire VOD, trying to remember what/when important things happened. Review sessions are unstructured and often don't fully complete in the allotted review time.
+In esports, coaches and teams need to review and discuss key moments in their practice. But finding these moments usually means manually scrubbing through an entire VOD, trying to remember what/when important things happened. Review sessions are often unstructured and may not always complete in the allotted review time.
 
 ## The Solution (Now)
 
