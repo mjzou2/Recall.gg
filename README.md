@@ -2,8 +2,6 @@
 
 **A local-first esports VOD comms search and analytics tool**
 
-Upload your VOD, search for any callout or moment, and jump straight to the timestamp. Built for coaches who want to spend less time scrubbing through 45-minute recordings and more time reviewing what matters.
-
 ---
 
 ## The Problem
