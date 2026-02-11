@@ -175,45 +175,6 @@ vodcomms/
 
 ---
 
-## Common Issues
-
-**ffmpeg not found:**
-```bash
-sudo apt install -y ffmpeg
-```
-
-**Backend port already in use:**
-```bash
-# Stop the other process or change port:
-uvicorn main:app --reload --port 8001
-```
-
-**GPU not detected:**
-- Check NVIDIA driver: `nvidia-smi`
-- Verify CUDA installation: `nvcc --version`
-- Fall back to CPU: `TRANSCRIBE_DEVICE=cpu uvicorn main:app --reload`
-
-**Transcription takes forever:**
-- Expected: ~5 min per hour of audio (GPU), ~20 min per hour (CPU)
-- Model size impacts speed: base.en (fastest) → small.en → medium.en (slowest)
-
-**SQLite database location:**
-- `backend/data/app.sqlite`
-- Inspect with: `sqlite3 backend/data/app.sqlite`
-
----
-
-## Docker (Alternative Setup)
-
-```bash
-docker compose up --build
-```
-
-- Backend: http://localhost:8000/docs
-- Data persists in `./backend/data/`
-
----
-
 ## Roadmap
 
 **MVP 1.0 (Current):** Complete local tool with search, transcription, and time filtering
@@ -221,23 +182,6 @@ docker compose up --build
 **MVP 2.0 (Future):** Production SaaS with teams, cloud hosting, fine-tuned models, live transcription
 
 See [PRODUCT.md](docs/PRODUCT.md) for detailed roadmap and feature priorities.
-
----
-
-## Contributing
-
-This is a solo project in active development. Feedback and ideas welcome, but not accepting PRs at this time.
-
-For feature requests or bug reports, open an issue with:
-- What you were trying to do
-- What happened instead
-- Logs/screenshots if applicable
-
----
-
-## License
-
-MIT License - see LICENSE file for details.
 
 ---
 
