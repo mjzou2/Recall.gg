@@ -190,7 +190,7 @@ Most VOD tools parse **game events** (kills, objectives, gold). RECALL.GG parses
 4. ⚙️ **Bookmarks/favorites** - star chunks (1-2 hours)
 5. ⚙️ **Fuzzy post-processing** - RapidFuzz correction (1-2 hours)
 6. ⚙️ **Synonym expansion** - hardcoded alias map for search (1-2 hours)
-6. ⚙️ **Demo preparation** - record video, write README, polish UI (2-4 hours)
+7. ⚙️ **Demo preparation** - record video, write README, polish UI (2-4 hours)
 
 **Total estimated: 12-20 hours → Target: Demo-ready by end of week**
 
