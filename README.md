@@ -6,14 +6,16 @@
 
 ## The Problem
 
-After a scrim, coaches need to review key moments: the Baron call, the mid dive, the late-game shotcalling. But finding these moments means manually scrubbing through the entire VOD, trying to remember when things happened. And beyond just finding moments, there's no easy way to analyze patterns, track decision-making, or measure communication quality over time.
+In esports, coaches and teams need to review and discuss key moments in their practice. But finding these moments usually means manually scrubbing through an entire VOD, trying to remember what/when important things happened. Review sessions are unstructured and often don't fully complete in the allotted review time.
 
 ## The Solution (Now)
 
-1. **Upload** your scrim audio or video
+1. **Upload** your scrim VOD with audio
 2. **Process** with GPU-accelerated transcription (built for League terminology)
 3. **Search** for any keyword - "Baron", "dive mid", "flash", "reset"
 4. **Jump** directly to that moment in your YouTube VOD with one click
+
+Gone are the days of manually scrubbing through a 5+ hour VOD. Now you can find the moments that matter in seconds.
 
 ## The Vision (Next)
 
@@ -24,6 +26,8 @@ Once you can search your comms, you can analyze them:
 - Identify patterns in decision-making and shotcalling
 
 The foundation is search. The goal is team communication intelligence.
+
+**In competition, every slight advantage matters. Spend less time searching and more time improving.**
 
 ## Current Features (MVP 1.0)
 
