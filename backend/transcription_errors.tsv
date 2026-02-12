@@ -1,0 +1,8 @@
+got	expected	context	category
+cassante	K'Sante	cassante is flanking top side	severe_mishear
+casante	K'Sante	casante top side	severe_mishear
+chen	Shen	can chen tp to bot after the top wave	short_word
+devin	they haven't	devin pulled	word_fusion
+ling's one	lane's won	oh nice. ling's won	severe_mishear
+Thresh	there's	he took plant. Thresh no plants	false_positive
+aura	Aurora	look on aura	severe_mishear
