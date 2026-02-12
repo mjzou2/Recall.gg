@@ -432,6 +432,12 @@ button:disabled {
   background-color: rgba(124, 58, 237, 0.04);
 }
 
+.chunk.active {
+  background: rgba(124, 58, 237, 0.08);
+  border-left: 2px solid var(--purple-primary);
+  padding-left: calc(0.625rem - 2px);
+}
+
 .chunk-text {
   cursor: pointer;
   margin: 0;
@@ -669,6 +675,30 @@ button:disabled {
   font-size: 0.8125rem;
   white-space: nowrap;
   margin-left: auto;
+}
+
+/* Auto-scroll toggle (inline with pagination) */
+.toggle-label-inline {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  user-select: none;
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+  padding-right: 0.75rem;
+}
+
+.toggle-label-inline input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: var(--purple-primary);
+}
+
+.toggle-label-inline:hover span {
+  color: var(--text-primary);
 }
 
 /* Standardized action button size for Prev/Next/Go/Clear */

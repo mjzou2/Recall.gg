@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import './App.css'
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8000'
 
@@ -115,6 +115,12 @@ function App() {
   const [sidebarTab, setSidebarTab] = useState('sessions')
   const [youtubePlayer, setYoutubePlayer] = useState(null)
   const [isYoutubeApiReady, setIsYoutubeApiReady] = useState(false)
+  const [activeChunkId, setActiveChunkId] = useState(null)
+  const [autoScrollEnabled, setAutoScrollEnabled] = useState(true)
+
+  const chunkListRef = useRef(null)
+  const isAutoScrollingRef = useRef(false)
+  const lastScrollTopRef = useRef(0)
 
   const pageSize = 25
   const canSearch = Boolean(sessionId)
@@ -209,6 +215,116 @@ function App() {
     }
   }, [sessionDetails?.youtube_url, isYoutubeApiReady])
 
+  // Player position sync - poll current time and highlight active chunk
+  useEffect(() => {
+    if (!youtubePlayer || !youtubePlayer.getCurrentTime || chunks.length === 0) {
+      return
+    }
+
+    const interval = setInterval(() => {
+      // Only update position when playing
+      const playerState = youtubePlayer.getPlayerState?.()
+      if (playerState !== window.YT?.PlayerState?.PLAYING) {
+        return
+      }
+
+      const currentSeconds = youtubePlayer.getCurrentTime()
+      const currentMs = Math.floor(currentSeconds * 1000)
+
+      // Find the chunk that contains the current timestamp
+      const activeChunk = chunks.find(
+        (chunk) => chunk.start_ms <= currentMs && currentMs < chunk.end_ms
+      )
+
+      if (activeChunk) {
+        const chunkKey =
+          activeChunk.id ??
+          `${activeChunk.start_ms}-${activeChunk.end_ms}-${activeChunk.text?.length ?? 0}`
+
+        setActiveChunkId(chunkKey)
+
+        // Auto-scroll to active chunk if enabled
+        if (autoScrollEnabled) {
+          // Find which page this chunk is on
+          const chunkIndex = chunks.findIndex((chunk) => {
+            const key =
+              chunk.id ?? `${chunk.start_ms}-${chunk.end_ms}-${chunk.text?.length ?? 0}`
+            return key === chunkKey
+          })
+
+          if (chunkIndex !== -1) {
+            const targetPage = Math.floor(chunkIndex / pageSize)
+
+            // If chunk is on a different page, switch to that page first
+            if (targetPage !== pageIndex) {
+              setPageIndex(targetPage)
+              // Wait for React to re-render the new page before scrolling
+              setTimeout(() => {
+                isAutoScrollingRef.current = true
+                const chunkElement = document.querySelector(
+                  `[data-chunk-key="${chunkKey}"]`
+                )
+                if (chunkElement) {
+                  chunkElement.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'nearest',
+                  })
+                }
+                setTimeout(() => {
+                  isAutoScrollingRef.current = false
+                }, 1000)
+              }, 100)
+            } else {
+              // Same page, scroll immediately
+              isAutoScrollingRef.current = true
+              const chunkElement = document.querySelector(
+                `[data-chunk-key="${chunkKey}"]`
+              )
+              if (chunkElement) {
+                chunkElement.scrollIntoView({
+                  behavior: 'smooth',
+                  block: 'nearest',
+                })
+              }
+              setTimeout(() => {
+                isAutoScrollingRef.current = false
+              }, 1000)
+            }
+          }
+        }
+      }
+    }, 500)
+
+    return () => clearInterval(interval)
+  }, [youtubePlayer, chunks, autoScrollEnabled])
+
+  // Disable auto-scroll when user manually scrolls
+  useEffect(() => {
+    const container = chunkListRef.current
+    if (!container) return
+
+    // Initialize last scroll position
+    lastScrollTopRef.current = container.scrollTop
+
+    const handleScroll = () => {
+      // Only disable if this is a user-initiated scroll, not a programmatic one
+      if (!isAutoScrollingRef.current && autoScrollEnabled) {
+        const scrollDistance = Math.abs(container.scrollTop - lastScrollTopRef.current)
+
+        // Only disable if user scrolled more than 50 pixels (prevents accidental tiny scrolls)
+        if (scrollDistance > 50) {
+          setAutoScrollEnabled(false)
+        }
+      }
+
+      // Update last scroll position
+      lastScrollTopRef.current = container.scrollTop
+    }
+
+    container.addEventListener('scroll', handleScroll)
+    return () => container.removeEventListener('scroll', handleScroll)
+  }, [autoScrollEnabled])
+
   const resetChunkViews = () => {
     setPageIndex(0)
     setExpandedChunkIds(new Set())
@@ -245,15 +361,20 @@ function App() {
     }
   }
 
-  const handleTimestampClick = (startMs) => {
+  const handleTimestampClick = (chunk) => {
+    // Immediately highlight the clicked chunk
+    const chunkKey =
+      chunk.id ?? `${chunk.start_ms}-${chunk.end_ms}-${chunk.text?.length ?? 0}`
+    setActiveChunkId(chunkKey)
+
     if (youtubePlayer && youtubePlayer.seekTo) {
-      const seconds = Math.floor(startMs / 1000)
+      const seconds = Math.floor(chunk.start_ms / 1000)
       youtubePlayer.seekTo(seconds, true)
     } else {
       // Fallback to opening in new tab if player not available
       const youtubeLink = buildYoutubeUrlWithTimestamp(
         sessionDetails?.youtube_url,
-        startMs
+        chunk.start_ms
       )
       if (youtubeLink) {
         window.open(youtubeLink, '_blank')
@@ -840,7 +961,7 @@ function App() {
           )}
 
           {sidebarTab === 'explore' && (
-          <div className="search-tab">
+          <div className="search-tab" ref={chunkListRef}>
             <div className="search-controls">
               <input
                 type="text"
@@ -928,6 +1049,16 @@ function App() {
             {sessionId && chunks.length > 0 && (
               <div className="pagination">
                 <div className="actions">
+                  {sessionDetails?.youtube_url && (
+                    <label className="toggle-label-inline">
+                      <input
+                        type="checkbox"
+                        checked={autoScrollEnabled}
+                        onChange={(e) => setAutoScrollEnabled(e.target.checked)}
+                      />
+                      <span>Auto-scroll</span>
+                    </label>
+                  )}
                   <button
                     type="button"
                     className="action-btn ghost"
@@ -964,13 +1095,17 @@ function App() {
                   chunk.start_ms
                 )
                 return (
-                  <div key={chunkKey} className="chunk">
+                  <div
+                    key={chunkKey}
+                    data-chunk-key={chunkKey}
+                    className={`chunk ${chunkKey === activeChunkId ? 'active' : ''}`}
+                  >
                     <div className="chunk-header">
                       {sessionDetails?.youtube_url ? (
                         <button
                           type="button"
                           className="chunk-times chunk-times-link"
-                          onClick={() => handleTimestampClick(chunk.start_ms)}
+                          onClick={() => handleTimestampClick(chunk)}
                         >
                           <span>{formatTime(chunk.start_ms)}</span>
                           <span>→</span>
