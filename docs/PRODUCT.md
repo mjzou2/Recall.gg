@@ -56,9 +56,13 @@ Most VOD tools parse **game events** (kills, objectives, gold). RECALL.GG parses
   - Click chunk timestamp → player seeks to that moment
   - Maximized player size for screensharing/presentation
   - YouTube iframe API integration with React
-- ⚙️ **Player position sync** (bidirectional)
-  - Player reaches chunk → chunk highlights in transcript
-  - Track playback position for active chunk highlighting
+- ✓ **Player position sync** (bidirectional)
+  - Polls player position every 500ms (only when playing)
+  - Active chunk highlights with purple accent border
+  - Auto-scroll to active chunk (toggleable via checkbox)
+  - Manual scroll (>50px) auto-disables scrolling
+  - Automatic page switching when active chunk is off-screen
+  - Instant highlight on timestamp click
 
 **Chunk Interaction:**
 - ⚙️ **Manual chunk annotations** - Add coach notes to specific chunks

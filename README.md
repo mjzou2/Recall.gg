@@ -48,6 +48,7 @@ The foundation is search. The goal is team communication intelligence.
 - ✅ **Keyword search** - Full-text search with BM25 ranking (SQLite FTS5)
 - ✅ **Time range filtering** - Filter chunks by game time (MM:SS format)
 - ✅ **Embedded YouTube player** - Click timestamps to seek player instantly
+- ✅ **Player position sync** - Active chunk highlights and auto-scrolls as video plays (toggleable)
 - ✅ **Tab-based sidebar** - Switch between Sessions and Explore (transcript) views
 - ✅ Pagination and chunk expansion (clickable text)
 - ✅ Copy timestamp URL to clipboard
@@ -58,7 +59,6 @@ The foundation is search. The goal is team communication intelligence.
 - ✅ Maximized player size for screensharing/presentation
 
 **In-progress:**
-- ⚙️ Player position sync (highlight active chunk as video plays)
 - ⚙️ Manual chunk annotations (add coach notes to chunks)
 - ⚙️ Chunk inline editing (fix transcription errors)
 - ⚙️ Bookmarks/favorites (star important chunks)
