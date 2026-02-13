@@ -104,6 +104,7 @@ function App() {
   const [endTime, setEndTime] = useState('')
   const [timeRangeError, setTimeRangeError] = useState('')
   const [lastTimeRange, setLastTimeRange] = useState('')
+  const [bookmarkedOnly, setBookmarkedOnly] = useState(false)
   const [pageIndex, setPageIndex] = useState(0)
   const [expandedChunkIds, setExpandedChunkIds] = useState(new Set())
   const [copiedChunkId, setCopiedChunkId] = useState(null)
@@ -470,6 +471,29 @@ function App() {
     }
   }
 
+  const handleToggleBookmark = async (chunk) => {
+    if (!chunk.id) return
+    const newBookmarkState = chunk.is_bookmarked ? 0 : 1
+    try {
+      const res = await fetch(`${API_BASE}/chunks/${chunk.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          is_bookmarked: newBookmarkState,
+        }),
+      })
+      if (!res.ok) throw new Error('Failed to toggle bookmark')
+      const updatedChunk = await res.json()
+
+      // Update the chunk in local state
+      setChunks((prev) =>
+        prev.map((c) => (c.id === updatedChunk.id ? updatedChunk : c))
+      )
+    } catch (err) {
+      setError(err.message)
+    }
+  }
+
   const loadSessions = async () => {
     try {
       const res = await fetch(`${API_BASE}/sessions`)
@@ -598,10 +622,11 @@ function App() {
     const endTimeInput = endTime.trim()
 
     // If no filters provided, reset to all chunks
-    if (!trimmed && !startTimeInput && !endTimeInput) {
+    if (!trimmed && !startTimeInput && !endTimeInput && !bookmarkedOnly) {
       setSearchQuery('')
       setStartTime('')
       setEndTime('')
+      setBookmarkedOnly(false)
       setIsSearching(false)
       setLastQuery('')
       setLastTimeRange('')
@@ -643,6 +668,7 @@ function App() {
           limit: 50,
           start_time_ms: startMs,
           end_time_ms: endMs,
+          is_bookmarked: bookmarkedOnly || null,
         }),
       })
       if (!res.ok) throw new Error('Search failed')
@@ -669,6 +695,7 @@ function App() {
     setSearchQuery('')
     setStartTime('')
     setEndTime('')
+    setBookmarkedOnly(false)
     setTimeRangeError('')
     setIsSearching(false)
     setLastQuery('')
@@ -1108,17 +1135,28 @@ function App() {
                   </button>
                 </div>
                 {sessionId && (
-                  <span className="search-status">
-                    {isSearching ? (
-                      <>
-                        Results: {chunks.length}
-                        {lastQuery && ` (${lastQuery})`}
-                        {lastTimeRange && ` (${lastTimeRange})`}
-                      </>
-                    ) : (
-                      `${chunks.length} chunks`
-                    )}
-                  </span>
+                  <>
+                    <label className="bookmark-filter-label">
+                      <input
+                        type="checkbox"
+                        checked={bookmarkedOnly}
+                        onChange={(e) => setBookmarkedOnly(e.target.checked)}
+                        disabled={!canSearch}
+                      />
+                      <span>Show bookmarked only</span>
+                    </label>
+                    <span className="search-status">
+                      {isSearching ? (
+                        <>
+                          Results: {chunks.length}
+                          {lastQuery && ` (${lastQuery})`}
+                          {lastTimeRange && ` (${lastTimeRange})`}
+                        </>
+                      ) : (
+                        `${chunks.length} chunks`
+                      )}
+                    </span>
+                  </>
                 )}
               </div>
               {timeRangeError && (
@@ -1133,7 +1171,7 @@ function App() {
               <p className="hint">Select a session to view chunks.</p>
             )}
             {sessionId && chunks.length === 0 && (
-              <p className="hint">No chunks yet. Process the uploaded file.</p>
+              <p className="hint">No chunks found. Check the filters or process the uploaded file.</p>
             )}
             {sessionId && chunks.length > 0 && (
               <div className="pagination">
@@ -1208,46 +1246,63 @@ function App() {
                         </div>
                       )}
                       <div className="chunk-header-right">
+                        {/* Copy button - always rendered, visibility controlled by CSS */}
                         {youtubeLink && (
                           <button
                             type="button"
-                            className="copy-btn"
+                            className={`copy-btn ${isExpanded ? 'always-visible' : 'hover-visible'}`}
                             onClick={() => handleCopyTimestamp(chunkKey, youtubeLink)}
                             title="Copy timestamp URL"
                           >
                             {copiedChunkId === chunkKey ? '✓' : '📋'}
                           </button>
                         )}
-                        {!isExpanded && chunk.notes && (
-                          <button
-                            type="button"
-                            className="note-indicator"
-                            onClick={() => toggleChunkExpanded(chunkKey)}
-                            title="Has note - click to expand"
-                          >
-                            📌
-                          </button>
-                        )}
-                        {!isExpanded && !chunk.notes && (
-                          <button
-                            type="button"
-                            className="expand-indicator"
-                            onClick={() => toggleChunkExpanded(chunkKey)}
-                            title="Click to expand"
-                          >
-                            ▼
-                          </button>
-                        )}
-                        {isExpanded && editingTextChunkId !== chunkKey && editingNoteChunkId !== chunkKey && (
-                          <button
-                            type="button"
-                            className="collapse-btn"
-                            onClick={() => toggleChunkExpanded(chunkKey)}
-                            title="Click to collapse"
-                          >
-                            ▲
-                          </button>
-                        )}
+                        {/* Note button - always visible when expanded or has note, hover-visible when collapsed without note */}
+                        <button
+                          type="button"
+                          className={`note-btn ${isExpanded || chunk.notes ? 'always-visible' : 'hover-visible'}`}
+                          onClick={() => {
+                            if (!isExpanded) {
+                              // Collapsed: expand first
+                              toggleChunkExpanded(chunkKey)
+                            } else {
+                              // Expanded: open editor
+                              handleEditNote(chunk)
+                            }
+                          }}
+                          title={
+                            !isExpanded && chunk.notes
+                              ? 'Has note - click to expand'
+                              : !isExpanded
+                              ? 'Expand to add note'
+                              : chunk.notes
+                              ? 'Edit note'
+                              : 'Add note'
+                          }
+                        >
+                          {chunk.notes ? '📝' : '✏️'}
+                        </button>
+                        {/* Star button - always visible when expanded or bookmarked */}
+                        <button
+                          type="button"
+                          className={`copy-btn ${isExpanded || chunk.is_bookmarked ? 'always-visible' : 'hover-visible'}`}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleToggleBookmark(chunk)
+                          }}
+                          title={chunk.is_bookmarked ? 'Remove bookmark' : 'Add bookmark'}
+                        >
+                          {chunk.is_bookmarked ? '⭐' : '☆'}
+                        </button>
+                        {/* Expand/collapse button */}
+                        <button
+                          type="button"
+                          className={`${isExpanded ? 'collapse-btn always-visible' : 'expand-indicator hover-visible'}`}
+                          onClick={() => toggleChunkExpanded(chunkKey)}
+                          title={isExpanded ? 'Click to collapse' : 'Click to expand'}
+                        >
+                          {isExpanded ? '▲' : '▼'}
+                        </button>
                       </div>
                     </div>
                     {editingTextChunkId === chunkKey ? (

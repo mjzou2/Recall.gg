@@ -77,6 +77,15 @@ def init_storage() -> None:
             )
         except sqlite3.OperationalError:
             pass  # Column already exists
+
+        # Add is_bookmarked column if it doesn't exist (for existing databases)
+        try:
+            conn.execute(
+                "ALTER TABLE chunks ADD COLUMN is_bookmarked INTEGER DEFAULT 0"
+            )
+        except sqlite3.OperationalError:
+            pass  # Column already exists
+
         conn.execute(
             """
             CREATE INDEX IF NOT EXISTS idx_chunks_session ON chunks(session_id)
@@ -179,16 +188,19 @@ class ChunkResponse(BaseModel):
     end_ms: int
     text: str
     notes: Optional[str] = None
+    is_bookmarked: Optional[int] = 0
 
 class ChunkUpdateRequest(BaseModel):
     notes: Optional[str] = None
     text: Optional[str] = None
+    is_bookmarked: Optional[int] = None
 
 class SearchRequest(BaseModel):
     query: str = ""
     limit: int = 20
     start_time_ms: Optional[int] = None
     end_time_ms: Optional[int] = None
+    is_bookmarked: Optional[bool] = None
 
 app = FastAPI(title="RECALL.GG", description="Esports comms search MVP")
 
@@ -337,6 +349,7 @@ def search_chunks(session_id: str, payload: SearchRequest) -> Dict[str, List[Dic
     query = payload.query.strip()
     start_time_ms = payload.start_time_ms
     end_time_ms = payload.end_time_ms
+    is_bookmarked = payload.is_bookmarked
     limit = max(0, min(payload.limit, 50))
 
     # Validate time range
@@ -354,7 +367,7 @@ def search_chunks(session_id: str, payload: SearchRequest) -> Dict[str, List[Dic
         start_time_ms = 0
 
     # Return empty if no filters provided
-    if not query and start_time_ms is None and end_time_ms is None:
+    if not query and start_time_ms is None and end_time_ms is None and is_bookmarked is None:
         return {"results": []}
 
     if limit == 0:
@@ -363,62 +376,60 @@ def search_chunks(session_id: str, payload: SearchRequest) -> Dict[str, List[Dic
     with sqlite3.connect(DB_PATH) as conn:
         conn.row_factory = sqlite3.Row
 
-        # Case 1: Keyword only (existing behavior)
-        if query and start_time_ms is None:
+        # Determine if we need FTS search
+        use_fts = bool(query)
+
+        if use_fts:
+            # Prepare FTS query
             tokens = [token for token in query.split() if token]
-            # Sanitize tokens: remove FTS5 special chars (apostrophes, quotes, parens, etc.)
             sanitized_tokens = [re.sub(r"['\"\(\)]", "", token) for token in tokens if token]
             fts_query = " ".join(f"{token}*" for token in sanitized_tokens if token)
 
-            rows = conn.execute(
-                """
-                SELECT c.id, c.start_ms, c.end_ms, c.text, c.notes
+            # Build WHERE clauses for additional filters
+            where_clauses = ["f.session_id = ?", "chunks_fts MATCH ?"]
+            params = [session_id, fts_query]
+
+            if start_time_ms is not None:
+                where_clauses.append("c.start_ms < ?")
+                where_clauses.append("c.end_ms > ?")
+                params.extend([end_time_ms, start_time_ms])
+
+            if is_bookmarked is True:
+                where_clauses.append("c.is_bookmarked = 1")
+
+            query_sql = f"""
+                SELECT c.id, c.start_ms, c.end_ms, c.text, c.notes, c.is_bookmarked
                 FROM chunks_fts f
                 JOIN chunks c ON c.rowid = f.rowid
-                WHERE f.session_id = ?
-                  AND chunks_fts MATCH ?
+                WHERE {' AND '.join(where_clauses)}
                 ORDER BY c.start_ms
                 LIMIT ?
-                """,
-                (session_id, fts_query, limit),
-            ).fetchall()
+            """
+            params.append(limit)
+            rows = conn.execute(query_sql, params).fetchall()
 
-        # Case 2: Time range only
-        elif not query and start_time_ms is not None:
-            rows = conn.execute(
-                """
-                SELECT id, start_ms, end_ms, text, notes
+        else:
+            # Direct query on chunks table
+            where_clauses = ["session_id = ?"]
+            params = [session_id]
+
+            if start_time_ms is not None:
+                where_clauses.append("start_ms < ?")
+                where_clauses.append("end_ms > ?")
+                params.extend([end_time_ms, start_time_ms])
+
+            if is_bookmarked is True:
+                where_clauses.append("is_bookmarked = 1")
+
+            query_sql = f"""
+                SELECT id, start_ms, end_ms, text, notes, is_bookmarked
                 FROM chunks
-                WHERE session_id = ?
-                  AND start_ms < ?
-                  AND end_ms > ?
+                WHERE {' AND '.join(where_clauses)}
                 ORDER BY start_ms
                 LIMIT ?
-                """,
-                (session_id, end_time_ms, start_time_ms, limit),
-            ).fetchall()
-
-        # Case 3: Combined keyword + time range
-        else:  # query and start_time_ms is not None
-            tokens = [token for token in query.split() if token]
-            # Sanitize tokens: remove FTS5 special chars (apostrophes, quotes, parens, etc.)
-            sanitized_tokens = [re.sub(r"['\"\(\)]", "", token) for token in tokens if token]
-            fts_query = " ".join(f"{token}*" for token in sanitized_tokens if token)
-
-            rows = conn.execute(
-                """
-                SELECT c.id, c.start_ms, c.end_ms, c.text, c.notes
-                FROM chunks_fts f
-                JOIN chunks c ON c.rowid = f.rowid
-                WHERE f.session_id = ?
-                  AND chunks_fts MATCH ?
-                  AND c.start_ms < ?
-                  AND c.end_ms > ?
-                ORDER BY c.start_ms
-                LIMIT ?
-                """,
-                (session_id, fts_query, end_time_ms, start_time_ms, limit),
-            ).fetchall()
+            """
+            params.append(limit)
+            rows = conn.execute(query_sql, params).fetchall()
 
     results = [
         {
@@ -427,6 +438,7 @@ def search_chunks(session_id: str, payload: SearchRequest) -> Dict[str, List[Dic
             "end_ms": row["end_ms"],
             "text": row["text"],
             "notes": row["notes"],
+            "is_bookmarked": row["is_bookmarked"],
         }
         for row in rows
     ]
@@ -457,6 +469,11 @@ def update_chunk(chunk_id: str, payload: ChunkUpdateRequest) -> ChunkResponse:
         notes = updates["notes"].strip()
         updates["notes"] = notes
 
+    # Validate is_bookmarked if provided
+    if "is_bookmarked" in updates and updates["is_bookmarked"] is not None:
+        if updates["is_bookmarked"] not in (0, 1):
+            raise HTTPException(status_code=400, detail="is_bookmarked must be 0 or 1")
+
     # Build dynamic UPDATE query
     set_clauses = []
     values = []
@@ -466,6 +483,9 @@ def update_chunk(chunk_id: str, payload: ChunkUpdateRequest) -> ChunkResponse:
     if "text" in updates:
         set_clauses.append("text = ?")
         values.append(updates["text"])
+    if "is_bookmarked" in updates:
+        set_clauses.append("is_bookmarked = ?")
+        values.append(updates["is_bookmarked"])
 
     values.append(chunk_id)
 
