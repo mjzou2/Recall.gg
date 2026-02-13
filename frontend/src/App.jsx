@@ -83,6 +83,32 @@ const extractYoutubeVideoId = (url) => {
   return null
 }
 
+const formatRelativeTime = (isoDate) => {
+  const now = new Date()
+  const date = new Date(isoDate)
+  const diffMs = now - date
+  const diffMins = Math.floor(diffMs / 60000)
+  const diffHours = Math.floor(diffMs / 3600000)
+  const diffDays = Math.floor(diffMs / 86400000)
+
+  if (diffMins < 1) return 'Just now'
+  if (diffMins < 60) return `${diffMins}m ago`
+  if (diffHours < 24) return `${diffHours}h ago`
+  if (diffDays < 7) return `${diffDays}d ago`
+  return new Date(isoDate).toLocaleDateString()
+}
+
+const getStatusDisplay = (status) => {
+  const map = {
+    created: 'Created',
+    uploaded: 'Uploaded',
+    processing: 'Processing...',
+    ready: 'Ready',
+    failed: 'Failed'
+  }
+  return map[status] || status
+}
+
 function App() {
   const [title, setTitle] = useState('')
   const [youtubeUrl, setYoutubeUrl] = useState('')
@@ -122,6 +148,9 @@ function App() {
   const [noteText, setNoteText] = useState('')
   const [editingTextChunkId, setEditingTextChunkId] = useState(null)
   const [chunkText, setChunkText] = useState('')
+  const [isCreatingNew, setIsCreatingNew] = useState(false)
+  const [isEditingSessionNotes, setIsEditingSessionNotes] = useState(false)
+  const [sessionNotesText, setSessionNotesText] = useState('')
 
   const chunkListRef = useRef(null)
   const isAutoScrollingRef = useRef(false)
@@ -181,7 +210,11 @@ function App() {
   useEffect(() => {
     // Clean up existing player
     if (youtubePlayer && youtubePlayer.destroy) {
-      youtubePlayer.destroy()
+      try {
+        youtubePlayer.destroy()
+      } catch (err) {
+        console.error('Error destroying existing player:', err)
+      }
       setYoutubePlayer(null)
     }
 
@@ -196,27 +229,42 @@ function App() {
       return
     }
 
-    // Create the player
-    const player = new window.YT.Player('youtube-player', {
-      videoId: videoId,
-      width: '100%',
-      height: '100%',
-      playerVars: {
-        autoplay: 0,
-        modestbranding: 1,
-      },
-      events: {
-        onReady: (event) => {
-          setYoutubePlayer(event.target)
-        },
-      },
-    })
+    // Check if the player container exists
+    const container = document.getElementById('youtube-player')
+    if (!container) {
+      console.warn('YouTube player container not found')
+      return
+    }
 
-    // Cleanup on unmount or session change
-    return () => {
-      if (player && player.destroy) {
-        player.destroy()
+    // Create the player
+    try {
+      const player = new window.YT.Player('youtube-player', {
+        videoId: videoId,
+        width: '100%',
+        height: '100%',
+        playerVars: {
+          autoplay: 0,
+          modestbranding: 1,
+        },
+        events: {
+          onReady: (event) => {
+            setYoutubePlayer(event.target)
+          },
+        },
+      })
+
+      // Cleanup on unmount or session change
+      return () => {
+        if (player && player.destroy) {
+          try {
+            player.destroy()
+          } catch (err) {
+            console.error('Error destroying player in cleanup:', err)
+          }
+        }
       }
+    } catch (err) {
+      console.error('Error creating YouTube player:', err)
     }
   }, [sessionDetails?.youtube_url, isYoutubeApiReady])
 
@@ -227,14 +275,20 @@ function App() {
     }
 
     const interval = setInterval(() => {
-      // Only update position when playing
-      const playerState = youtubePlayer.getPlayerState?.()
-      if (playerState !== window.YT?.PlayerState?.PLAYING) {
-        return
-      }
+      try {
+        // Check if player still exists and is valid
+        if (!youtubePlayer || !youtubePlayer.getCurrentTime || !youtubePlayer.getPlayerState) {
+          return
+        }
 
-      const currentSeconds = youtubePlayer.getCurrentTime()
-      const currentMs = Math.floor(currentSeconds * 1000)
+        // Only update position when playing
+        const playerState = youtubePlayer.getPlayerState()
+        if (playerState !== window.YT?.PlayerState?.PLAYING) {
+          return
+        }
+
+        const currentSeconds = youtubePlayer.getCurrentTime()
+        const currentMs = Math.floor(currentSeconds * 1000)
 
       // Find the chunk that contains the current timestamp
       const activeChunk = chunks.find(
@@ -297,6 +351,10 @@ function App() {
             }
           }
         }
+      }
+      } catch (err) {
+        // Silently catch errors to prevent crashes during player state changes
+        console.error('Error in player position sync:', err)
       }
     }, 500)
 
@@ -551,6 +609,11 @@ function App() {
       resetChunkViews()
       setStatus('Session created')
       await loadSessions()
+      // Collapse the create form and clear inputs
+      setIsCreatingNew(false)
+      setTitle('')
+      setYoutubeUrl('')
+      setNotes('')
     } catch (err) {
       setError(err.message)
     } finally {
@@ -775,6 +838,83 @@ function App() {
     }
   }
 
+  const handleCloseSession = () => {
+    try {
+      // CRITICAL: Destroy YouTube player FIRST before clearing any state
+      // This prevents the player from trying to interact with removed DOM elements
+      if (youtubePlayer && youtubePlayer.destroy) {
+        try {
+          youtubePlayer.destroy()
+        } catch (err) {
+          console.error('Error destroying YouTube player:', err)
+        }
+      }
+      setYoutubePlayer(null)
+
+      // Clear all editing states
+      setIsEditingSession(false)
+      setIsEditingSessionNotes(false)
+      setSessionNotesText('')
+      setEditTitle('')
+      setEditYoutubeUrl('')
+      setEditNotes('')
+
+      // Clear search states
+      setSearchQuery('')
+      setIsSearching(false)
+      setLastQuery('')
+      setLastTimeRange('')
+      setBookmarkedOnly(false)
+
+      // Clear file upload
+      setFile(null)
+
+      // Clear chunks and reset views
+      setChunks([])
+      resetChunkViews()
+
+      // Finally clear session data
+      setSessionId('')
+      setSessionDetails(null)
+    } catch (err) {
+      console.error('Error in handleCloseSession:', err)
+      // Force a hard reset if something goes wrong
+      window.location.reload()
+    }
+  }
+
+  const handleEditSessionNotes = () => {
+    setIsEditingSessionNotes(true)
+    setSessionNotesText(sessionDetails?.notes || '')
+  }
+
+  const handleCancelSessionNotes = () => {
+    setIsEditingSessionNotes(false)
+    setSessionNotesText('')
+  }
+
+  const handleSaveSessionNotes = async () => {
+    if (!sessionId) return
+    try {
+      const res = await fetch(`${API_BASE}/sessions/${sessionId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          notes: sessionNotesText.trim() || null,
+        }),
+      })
+      if (!res.ok) throw new Error('Failed to save notes')
+      const data = await res.json()
+      setSessionDetails(data)
+      setIsEditingSessionNotes(false)
+      setSessionNotesText('')
+      await loadSessions()
+      setStatus('Notes saved')
+    } catch (err) {
+      setError(err.message)
+    }
+  }
+
   const totalPages = Math.max(1, Math.ceil(chunks.length / pageSize))
   const pageStart = pageIndex * pageSize
   const pageChunks = chunks.slice(pageStart, pageStart + pageSize)
@@ -820,104 +960,87 @@ function App() {
             <section className="panel">
               <div className="panel-header">
                 <div>
-                  <p className="eyebrow">Step 1</p>
-                  <h2>Create a session</h2>
+                  <p className="eyebrow">Sessions</p>
+                  <h2>Your sessions</h2>
                 </div>
                 <button className="ghost" onClick={loadSessions}>
-                  Refresh sessions
+                  Refresh
                 </button>
               </div>
-              <form className="stack" onSubmit={handleCreateSession}>
-                <label className="field">
-                  <span>Title</span>
-                  <input
-                    type="text"
-                    placeholder="Scrim vs Team Blue"
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                  />
-                </label>
-                <label className="field">
-                  <span>YouTube URL</span>
-                  <input
-                    type="url"
-                    placeholder="https://youtube.com/watch?v=..."
-                    value={youtubeUrl}
-                    onChange={(e) => setYoutubeUrl(e.target.value)}
-                  />
-                </label>
-                <label className="field">
-                  <span>
-                    Notes <span className="hint">(optional, {150 - notes.length} chars left)</span>
-                  </span>
-                  <textarea
-                    placeholder="e.g., 'Scrim vs Team Red - Baron control focus'"
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
-                    maxLength={150}
-                    rows={2}
-                  />
-                </label>
-                <div className="actions">
-                  <button type="submit" disabled={isCreating}>
-                    {isCreating ? 'Creating...' : 'Create session'}
-                  </button>
-                  {sessionId && (
-                    <span className="hint">
-                      Active session: <code>{sessionId}</code>
-                    </span>
-                  )}
-                </div>
-              </form>
-            </section>
-
-            <section className="panel">
-              <div className="panel-header">
-                <div>
-                  <p className="eyebrow">Step 2</p>
-                  <h2>Upload media</h2>
-                </div>
-                <span className="hint">
-                  Max: local files only.
-                </span>
-              </div>
-              <form className="stack" onSubmit={handleUpload}>
-                <label className="field file">
-                  <span>Choose video or audio</span>
-                  <input
-                    type="file"
-                    onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-                  />
-                </label>
-                <div className="actions">
-                  <button type="submit" disabled={isUploading}>
-                    {isUploading ? 'Uploading...' : 'Upload to session'}
-                  </button>
-                  <button
-                    type="button"
-                    className="ghost"
-                    onClick={handleProcess}
-                    disabled={isProcessing || !sessionDetails?.media_path}
-                  >
-                    {isProcessing
-                      ? `Processing... ${formatTime(elapsedSeconds * 1000)}`
-                      : 'Process (transcribe + chunk)'}
-                  </button>
-                </div>
-              </form>
-            </section>
-
-            <section className="panel">
-              <div className="panel-header">
-                <div>
-                  <p className="eyebrow">Sessions</p>
-                  <h2>Pick or revisit</h2>
-                </div>
-              </div>
               <div className="session-list">
-                {sessions.length === 0 && (
-                  <p className="hint">No sessions yet. Create one to begin.</p>
+                {/* New session button/form */}
+                {!isCreatingNew ? (
+                  <button
+                    className="create-session-btn"
+                    onClick={() => setIsCreatingNew(true)}
+                  >
+                    <span className="btn-icon">+</span>
+                    <span>New Session</span>
+                  </button>
+                ) : (
+                  <div className="create-session-inline">
+                    <form className="stack" onSubmit={handleCreateSession}>
+                      <label className="field">
+                        <span>Title</span>
+                        <input
+                          type="text"
+                          placeholder="Scrim vs Team Blue"
+                          value={title}
+                          onChange={(e) => setTitle(e.target.value)}
+                          autoFocus
+                        />
+                      </label>
+                      <label className="field">
+                        <span>YouTube URL</span>
+                        <input
+                          type="url"
+                          placeholder="https://youtube.com/watch?v=..."
+                          value={youtubeUrl}
+                          onChange={(e) => setYoutubeUrl(e.target.value)}
+                        />
+                      </label>
+                      <label className="field">
+                        <span>
+                          Notes <span className="hint">(optional, {150 - notes.length} chars left)</span>
+                        </span>
+                        <textarea
+                          placeholder="e.g., 'Scrim vs Team Red - Baron control focus'"
+                          value={notes}
+                          onChange={(e) => setNotes(e.target.value)}
+                          maxLength={150}
+                          rows={2}
+                        />
+                      </label>
+                      <div className="actions">
+                        <button type="submit" disabled={isCreating}>
+                          {isCreating ? 'Creating...' : 'Create'}
+                        </button>
+                        <button
+                          type="button"
+                          className="ghost"
+                          onClick={() => {
+                            setIsCreatingNew(false)
+                            setTitle('')
+                            setYoutubeUrl('')
+                            setNotes('')
+                          }}
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </form>
+                  </div>
                 )}
+
+                {/* Empty state */}
+                {sessions.length === 0 && !isCreatingNew && (
+                  <div className="empty-state">
+                    <p className="empty-state-icon">📹</p>
+                    <p className="hint">No sessions yet. Create your first session to get started.</p>
+                  </div>
+                )}
+
+                {/* Session cards */}
                 {sessions.map((session) => (
                   <button
                     key={session.id}
@@ -926,27 +1049,43 @@ function App() {
                     }`}
                     onClick={() => loadSessionDetails(session.id)}
                   >
-                    <div className="session-title">
-                      <strong>{session.title || 'Untitled session'}</strong>
-                      <span>{new Date(session.created_at).toLocaleString()}</span>
+                    <div className="session-card-header">
+                      <div className="session-title-row">
+                        <strong className="session-name">
+                          {session.title || 'Untitled session'}
+                        </strong>
+                        <span className={`status-badge ${session.status}`}>
+                          {getStatusDisplay(session.status)}
+                        </span>
+                      </div>
+                      <div className="session-meta-row">
+                        <span className="session-time">{formatRelativeTime(session.created_at)}</span>
+                        {session.processing_duration_seconds != null && (
+                          <span className="duration-chip">
+                            {formatDuration(session.processing_duration_seconds)}
+                          </span>
+                        )}
+                      </div>
                     </div>
-                    {session.youtube_url && (
-                      <p className="hint" title={session.youtube_url}>
-                        YouTube: {shortenUrl(session.youtube_url)}
-                      </p>
-                    )}
-                    {session.media_path && (
-                      <p className="hint" title={session.media_path}>
-                        Media: {basename(session.media_path)}
-                      </p>
-                    )}
-                    {session.notes && (
-                      <p className="session-notes-preview">
-                        {session.notes.length > 60
-                          ? session.notes.slice(0, 60) + '...'
-                          : session.notes}
-                      </p>
-                    )}
+                    <div className="session-card-details">
+                      {session.youtube_url && (
+                        <p className="hint" title={session.youtube_url}>
+                          🎥 {shortenUrl(session.youtube_url)}
+                        </p>
+                      )}
+                      {session.media_path && (
+                        <p className="hint" title={session.media_path}>
+                          📹 {basename(session.media_path)}
+                        </p>
+                      )}
+                      {session.notes && (
+                        <p className="session-notes-preview">
+                          {session.notes.length > 60
+                            ? session.notes.slice(0, 60) + '...'
+                            : session.notes}
+                        </p>
+                      )}
+                    </div>
                   </button>
                 ))}
               </div>
@@ -956,45 +1095,27 @@ function App() {
 
           <div className="left-footer">
             {sessionDetails && (
-              <section className="panel">
-                <div className="panel-header">
-                  <div>
-                    <p className="eyebrow">Selected</p>
-                    <h2>Session details</h2>
+              <div className="active-session-panel">
+                <div className="active-session-header">
+                  <div className="header-title-section">
+                    <p className="eyebrow">Active Session</p>
+                    <div className="title-with-status">
+                      <h2 className="active-session-title">
+                        {sessionDetails.title || 'Untitled session'}
+                      </h2>
+                      <span className={`status-badge ${sessionDetails.status}`}>
+                        {getStatusDisplay(sessionDetails.status)}
+                      </span>
+                    </div>
                   </div>
-                  <div className="actions">
-                    {isEditingSession ? (
-                      <>
-                        <button type="button" className="ghost" onClick={handleSaveSession}>
-                          Save
-                        </button>
-                        <button
-                          type="button"
-                          className="ghost"
-                          onClick={handleCancelEdit}
-                        >
-                          Cancel
-                        </button>
-                      </>
-                    ) : (
-                      <>
-                        <button
-                          type="button"
-                          className="ghost"
-                          onClick={handleDeleteSession}
-                        >
-                          Delete
-                        </button>
-                        <button
-                          type="button"
-                          className="ghost"
-                          onClick={handleEditSession}
-                        >
-                          Edit
-                        </button>
-                      </>
-                    )}
-                  </div>
+                  <button
+                    type="button"
+                    className="close-btn"
+                    onClick={handleCloseSession}
+                    title="Close session"
+                  >
+                    ×
+                  </button>
                 </div>
 
                 {isEditingSession ? (
@@ -1026,51 +1147,144 @@ function App() {
                         rows={2}
                       />
                     </label>
+                    <div className="actions">
+                      <button type="button" className="ghost" onClick={handleSaveSession}>
+                        Save
+                      </button>
+                      <button
+                        type="button"
+                        className="ghost"
+                        onClick={handleCancelEdit}
+                      >
+                        Cancel
+                      </button>
+                    </div>
                   </div>
                 ) : (
-                  <div className="stack">
-                    <div>
-                      <strong>Title:</strong> {sessionDetails.title}
-                    </div>
-
-                    <div>
-                      <strong>YouTube:</strong>{' '}
-                      {sessionDetails.youtube_url ? (
-                        <a
-                          href={sessionDetails.youtube_url}
-                          target="_blank"
-                          rel="noreferrer"
-                        >
-                          link
-                        </a>
-                      ) : (
-                        <span>—</span>
+                  <div className="active-session-metadata">
+                    <div className="metadata-info-row">
+                      <span className="metadata-item">
+                        {formatRelativeTime(sessionDetails.created_at)}
+                      </span>
+                      {sessionDetails.processing_duration_seconds != null && (
+                        <>
+                          <span className="metadata-separator">•</span>
+                          <span className="metadata-item">
+                            {formatDuration(sessionDetails.processing_duration_seconds)}
+                          </span>
+                        </>
+                      )}
+                      {sessionDetails.youtube_url && (
+                        <>
+                          <span className="metadata-separator">•</span>
+                          <a
+                            href={sessionDetails.youtube_url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="metadata-link"
+                            title="Open YouTube video"
+                          >
+                            🎥 YouTube
+                          </a>
+                        </>
+                      )}
+                      {sessionDetails.media_path && (
+                        <>
+                          <span className="metadata-separator">•</span>
+                          <span className="metadata-item" title={sessionDetails.media_path}>
+                            📹 {basename(sessionDetails.media_path)}
+                          </span>
+                        </>
                       )}
                     </div>
 
-                    {sessionDetails.notes && (
-                      <div className="session-notes-full">
-                        <strong>Notes:</strong>{' '}
+                    {isEditingSessionNotes ? (
+                      <div className="session-notes-edit">
+                        <label className="field">
+                          <span>Notes ({150 - sessionNotesText.length} chars left)</span>
+                          <textarea
+                            value={sessionNotesText}
+                            onChange={(e) => setSessionNotesText(e.target.value)}
+                            onBlur={handleSaveSessionNotes}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' && !e.shiftKey) {
+                                e.preventDefault()
+                                handleSaveSessionNotes()
+                              } else if (e.key === 'Escape') {
+                                handleCancelSessionNotes()
+                              }
+                            }}
+                            maxLength={150}
+                            rows={3}
+                            placeholder="Add session notes..."
+                            autoFocus
+                          />
+                        </label>
+                      </div>
+                    ) : sessionDetails.notes ? (
+                      <div className="metadata-notes editable" onClick={handleEditSessionNotes} title="Click to edit">
                         <span className="notes-text">{sessionDetails.notes}</span>
                       </div>
-                    )}
-
-                    <div title={sessionDetails.media_path}>
-                      <strong>Media:</strong>{' '}
-                      {sessionDetails.media_path
-                        ? basename(sessionDetails.media_path)
-                        : '—'}
-                    </div>
-
-                    {sessionDetails.processing_duration_seconds != null && (
-                      <div>
-                        <strong>Processed in:</strong>{' '}
-                        {formatDuration(sessionDetails.processing_duration_seconds)}
+                    ) : (
+                      <div className="metadata-notes-empty editable" onClick={handleEditSessionNotes} title="Click to add notes">
+                        <span className="notes-text-placeholder">Click to add notes...</span>
                       </div>
                     )}
+
+                    {/* Upload controls */}
+                    <div className="session-upload-controls">
+                      {!sessionDetails.media_path && (
+                        <div className="upload-prompt">
+                          <p className="hint">📤 Upload a video or audio file to get started</p>
+                        </div>
+                      )}
+                      <form className="upload-form" onSubmit={handleUpload}>
+                        <label className="field file">
+                          <span>{sessionDetails.media_path ? 'Replace media' : 'Choose file'}</span>
+                          <input
+                            type="file"
+                            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+                          />
+                        </label>
+                        <div className="upload-actions">
+                          <button type="submit" disabled={isUploading || !file}>
+                            {isUploading ? 'Uploading...' : 'Upload'}
+                          </button>
+                          {sessionDetails.media_path && (
+                            <button
+                              type="button"
+                              className="ghost"
+                              onClick={handleProcess}
+                              disabled={isProcessing}
+                            >
+                              {isProcessing
+                                ? `Processing... ${formatTime(elapsedSeconds * 1000)}`
+                                : 'Process'}
+                            </button>
+                          )}
+                        </div>
+                      </form>
+                    </div>
+
+                    <div className="actions">
+                      <button
+                        type="button"
+                        className="ghost"
+                        onClick={handleEditSession}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        className="ghost"
+                        onClick={handleDeleteSession}
+                      >
+                        Delete
+                      </button>
+                    </div>
                   </div>
                 )}
-              </section>
+              </div>
             )}
           </div>
           </div>
