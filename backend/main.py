@@ -522,6 +522,7 @@ def normalize_lol_text(text: str) -> str:
         (r"\bword(s|ing|ed)?\b", r"ward\1"),
         # Severe mishears fuzzy matching can't catch (score < 82)
         (r"\bcass?ante\b", "K'Sante"),
+        (r"\baura\b", "Aurora"),
         # Space-separated apostrophe champions (parts too short for fuzzy)
         (r"\bk sante\b", "K'Sante"),
         (r"\bksante\b", "K'Sante"),
@@ -532,6 +533,8 @@ def normalize_lol_text(text: str) -> str:
         (r"\bkog maw\b", "Kog'Maw"),
         (r"\brek sai\b", "Rek'Sai"),
         (r"\bkai sa\b", "Kai'Sa"),
+        # Short word mishears (< 4 chars, fuzzy skips)
+        (r"\bchen\b", "Shen"),
         # Short abbreviations (< 4 chars, fuzzy skips)
         (r"\btp\b", "TP"),
         (r"\bcc\b", "CC"),
@@ -557,6 +560,11 @@ def load_term_bank() -> Dict[str, List[str]]:
         return {}
 
 FUZZY_CATEGORIES = {"champions", "items", "objectives"}
+
+# Common English words whose normalized form (lowercase, no apostrophes) scores >= 82
+# against a champion/item/objective name.  These must never be fuzzy-replaced.
+# Discovered via transcription_errors.tsv testing.
+FUZZY_STOPWORDS = {"theres"}  # there's → "theres" matches Thresh at 83
 
 
 def _build_fuzzy_lookup(term_bank: Dict[str, List[str]]) -> Dict[int, Dict[str, str]]:
@@ -667,6 +675,8 @@ def fuzzy_correct_text(text: str, fuzzy_lookup: Dict[int, Dict[str, str]]) -> st
                 continue
 
             normalized = stripped.lower().replace("'", "")
+            if normalized in FUZZY_STOPWORDS:
+                continue
             result = process.extractOne(
                 normalized,
                 choices_single,
