@@ -52,6 +52,7 @@ The foundation is search. The goal is team communication intelligence.
 - ✅ **Tab-based sidebar** - Switch between Sessions and Explore (transcript) views
 - ✅ Pagination and chunk expansion (clickable text)
 - ✅ Copy timestamp URL to clipboard
+- ✅ **Chunk inline editing** - Edit transcribed text directly (1000 char limit, auto-save on blur/Enter)
 - ✅ **Chunk annotations** - Add coach notes to chunks (100 char limit, auto-save, searchable)
 
 **UI/UX:**
@@ -60,7 +61,6 @@ The foundation is search. The goal is team communication intelligence.
 - ✅ Maximized player size for screensharing/presentation
 
 **In-progress:**
-- ⚙️ Chunk inline editing (fix transcription errors)
 - ⚙️ Bookmarks/favorites (star important chunks)
 - ⚙️ Demo video showing the app and its features at the end of MVP 1.0
 
