@@ -73,7 +73,7 @@ Most VOD tools parse **game events** (kills, objectives, gold). RECALL.GG parses
 - ✓ **Chunk inline editing** - Fix transcription errors directly
   - Click expanded chunk text to edit → updates chunk text → improves future search
   - 1000 char limit, auto-save on blur/Enter, FTS5 auto-syncs
-  - Smart chevron UI: 📌 when has note, ▼ on hover, ⌃ to collapse
+  - Smart chevron UI: 📌 when has note, ▼ on hover, ▲ to collapse
 - ⚙️ **Bookmarks/favorites** - Star important chunks for quick access
   - Filter view: "Show me all starred chunks from this session"
 

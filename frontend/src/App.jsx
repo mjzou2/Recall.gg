@@ -1245,7 +1245,7 @@ function App() {
                             onClick={() => toggleChunkExpanded(chunkKey)}
                             title="Click to collapse"
                           >
-                            ⌃
+                            ▲
                           </button>
                         )}
                       </div>
