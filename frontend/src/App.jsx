@@ -117,6 +117,8 @@ function App() {
   const [isYoutubeApiReady, setIsYoutubeApiReady] = useState(false)
   const [activeChunkId, setActiveChunkId] = useState(null)
   const [autoScrollEnabled, setAutoScrollEnabled] = useState(true)
+  const [editingNoteChunkId, setEditingNoteChunkId] = useState(null)
+  const [noteText, setNoteText] = useState('')
 
   const chunkListRef = useRef(null)
   const isAutoScrollingRef = useRef(false)
@@ -379,6 +381,44 @@ function App() {
       if (youtubeLink) {
         window.open(youtubeLink, '_blank')
       }
+    }
+  }
+
+  const handleEditNote = (chunk) => {
+    const chunkKey =
+      chunk.id ?? `${chunk.start_ms}-${chunk.end_ms}-${chunk.text?.length ?? 0}`
+    setEditingNoteChunkId(chunkKey)
+    setNoteText(chunk.notes || '')
+  }
+
+  const handleCancelNote = () => {
+    setEditingNoteChunkId(null)
+    setNoteText('')
+  }
+
+  const handleSaveNote = async (chunk) => {
+    if (!chunk.id) return
+    try {
+      const res = await fetch(`${API_BASE}/chunks/${chunk.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          notes: noteText.trim() || null,
+        }),
+      })
+      if (!res.ok) throw new Error('Failed to save note')
+      const updatedChunk = await res.json()
+
+      // Update the chunk in local state
+      setChunks((prev) =>
+        prev.map((c) => (c.id === updatedChunk.id ? updatedChunk : c))
+      )
+
+      setEditingNoteChunkId(null)
+      setNoteText('')
+      setStatus('Note saved')
+    } catch (err) {
+      setError(err.message)
     }
   }
 
@@ -850,7 +890,7 @@ function App() {
                   <div className="actions">
                     {isEditingSession ? (
                       <>
-                        <button type="button" onClick={handleSaveSession}>
+                        <button type="button" className="ghost" onClick={handleSaveSession}>
                           Save
                         </button>
                         <button
@@ -865,6 +905,7 @@ function App() {
                       <>
                         <button
                           type="button"
+                          className="ghost"
                           onClick={handleDeleteSession}
                         >
                           Delete
@@ -1003,7 +1044,7 @@ function App() {
                   />
                   <button
                     type="button"
-                    className="action-btn"
+                    className="action-btn primary"
                     onClick={handleSearch}
                     disabled={!canSearch}
                   >
@@ -1011,7 +1052,7 @@ function App() {
                   </button>
                   <button
                     type="button"
-                    className="action-btn ghost"
+                    className="action-btn"
                     onClick={handleClearSearch}
                     disabled={!canSearch}
                   >
@@ -1061,7 +1102,7 @@ function App() {
                   )}
                   <button
                     type="button"
-                    className="action-btn ghost"
+                    className="action-btn"
                     onClick={() => setPageIndex((prev) => Math.max(0, prev - 1))}
                     disabled={pageIndex === 0}
                   >
@@ -1069,7 +1110,7 @@ function App() {
                   </button>
                   <button
                     type="button"
-                    className="action-btn ghost"
+                    className="action-btn"
                     onClick={() =>
                       setPageIndex((prev) => Math.min(totalPages - 1, prev + 1))
                     }
@@ -1118,16 +1159,38 @@ function App() {
                           <span>{formatTime(chunk.end_ms)}</span>
                         </div>
                       )}
-                      {youtubeLink && (
-                        <button
-                          type="button"
-                          className="copy-btn"
-                          onClick={() => handleCopyTimestamp(chunkKey, youtubeLink)}
-                          title="Copy timestamp URL"
-                        >
-                          {copiedChunkId === chunkKey ? '✓ Copied' : 'Copy'}
-                        </button>
-                      )}
+                      <div className="chunk-header-right">
+                        {youtubeLink && (
+                          <button
+                            type="button"
+                            className="copy-btn"
+                            onClick={() => handleCopyTimestamp(chunkKey, youtubeLink)}
+                            title="Copy timestamp URL"
+                          >
+                            {copiedChunkId === chunkKey ? '✓' : '📋'}
+                          </button>
+                        )}
+                        {chunk.notes && !isExpanded && (
+                          <button
+                            type="button"
+                            className="note-indicator"
+                            onClick={() => toggleChunkExpanded(chunkKey)}
+                            title="Has note - click to expand"
+                          >
+                            📌
+                          </button>
+                        )}
+                        {isExpanded && editingNoteChunkId !== chunkKey && (
+                          <button
+                            type="button"
+                            className="edit-note-btn"
+                            onClick={() => handleEditNote(chunk)}
+                            title={chunk.notes ? 'Edit note' : 'Add note'}
+                          >
+                            ✏️
+                          </button>
+                        )}
+                      </div>
                     </div>
                     <p
                       className="chunk-text"
@@ -1136,6 +1199,42 @@ function App() {
                     >
                       {isExpanded ? chunk.text : previewText}
                     </p>
+                    {isExpanded && editingNoteChunkId === chunkKey && (
+                      <div className="chunk-note-edit">
+                        <label className="field">
+                          <span>Notes ({100 - noteText.length} chars left)</span>
+                          <textarea
+                            value={noteText}
+                            onChange={(e) => setNoteText(e.target.value)}
+                            onBlur={() => handleSaveNote(chunk)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault()
+                                handleSaveNote(chunk)
+                              } else if (e.key === 'Escape') {
+                                handleCancelNote()
+                              }
+                            }}
+                            maxLength={100}
+                            rows={3}
+                            placeholder="Add your notes here..."
+                            autoFocus
+                          />
+                        </label>
+                      </div>
+                    )}
+                    {isExpanded && editingNoteChunkId !== chunkKey && chunk.notes && (
+                      <div className="chunk-note-display">
+                        <p className="note-label">Notes:</p>
+                        <p
+                          className="note-text"
+                          onClick={() => handleEditNote(chunk)}
+                          title="Click to edit"
+                        >
+                          {chunk.notes}
+                        </p>
+                      </div>
+                    )}
                   </div>
                 )
               })}

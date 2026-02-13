@@ -70,6 +70,13 @@ def init_storage() -> None:
             )
         """
         )
+        # Add notes column if it doesn't exist (for existing databases)
+        try:
+            conn.execute(
+                "ALTER TABLE chunks ADD COLUMN notes TEXT"
+            )
+        except sqlite3.OperationalError:
+            pass  # Column already exists
         conn.execute(
             """
             CREATE INDEX IF NOT EXISTS idx_chunks_session ON chunks(session_id)
@@ -99,6 +106,7 @@ def init_storage() -> None:
             """
             CREATE VIRTUAL TABLE IF NOT EXISTS chunks_fts USING fts5(
                 text,
+                notes,
                 session_id UNINDEXED,
                 content='chunks'
             )
@@ -107,26 +115,26 @@ def init_storage() -> None:
         conn.execute(
             """
             CREATE TRIGGER IF NOT EXISTS chunks_ai AFTER INSERT ON chunks BEGIN
-                INSERT INTO chunks_fts(rowid, text, session_id)
-                VALUES (new.rowid, new.text, new.session_id);
+                INSERT INTO chunks_fts(rowid, text, notes, session_id)
+                VALUES (new.rowid, new.text, new.notes, new.session_id);
             END;
         """
         )
         conn.execute(
             """
             CREATE TRIGGER IF NOT EXISTS chunks_ad AFTER DELETE ON chunks BEGIN
-                INSERT INTO chunks_fts(chunks_fts, rowid, text, session_id)
-                VALUES ('delete', old.rowid, old.text, old.session_id);
+                INSERT INTO chunks_fts(chunks_fts, rowid, text, notes, session_id)
+                VALUES ('delete', old.rowid, old.text, old.notes, old.session_id);
             END;
         """
         )
         conn.execute(
             """
             CREATE TRIGGER IF NOT EXISTS chunks_au AFTER UPDATE ON chunks BEGIN
-                INSERT INTO chunks_fts(chunks_fts, rowid, text, session_id)
-                VALUES ('delete', old.rowid, old.text, old.session_id);
-                INSERT INTO chunks_fts(rowid, text, session_id)
-                VALUES (new.rowid, new.text, new.session_id);
+                INSERT INTO chunks_fts(chunks_fts, rowid, text, notes, session_id)
+                VALUES ('delete', old.rowid, old.text, old.notes, old.session_id);
+                INSERT INTO chunks_fts(rowid, text, notes, session_id)
+                VALUES (new.rowid, new.text, new.notes, new.session_id);
             END;
         """
         )
@@ -170,6 +178,10 @@ class ChunkResponse(BaseModel):
     start_ms: int
     end_ms: int
     text: str
+    notes: Optional[str] = None
+
+class ChunkUpdateRequest(BaseModel):
+    notes: Optional[str] = None
 
 class SearchRequest(BaseModel):
     query: str = ""
@@ -217,6 +229,17 @@ def fetch_chunks(session_id: str) -> List[Dict]:
             (session_id,),
         ).fetchall()
     return [row_to_dict(row) for row in rows]
+
+
+def fetch_chunk(chunk_id: str) -> Dict:
+    with sqlite3.connect(DB_PATH) as conn:
+        conn.row_factory = sqlite3.Row
+        row = conn.execute(
+            "SELECT * FROM chunks WHERE id = ?", (chunk_id,)
+        ).fetchone()
+    if not row:
+        raise HTTPException(status_code=404, detail="Chunk not found")
+    return row_to_dict(row)
 
 
 @app.post("/sessions", response_model=SessionResponse)
@@ -348,7 +371,7 @@ def search_chunks(session_id: str, payload: SearchRequest) -> Dict[str, List[Dic
 
             rows = conn.execute(
                 """
-                SELECT c.id, c.start_ms, c.end_ms, c.text
+                SELECT c.id, c.start_ms, c.end_ms, c.text, c.notes
                 FROM chunks_fts f
                 JOIN chunks c ON c.rowid = f.rowid
                 WHERE f.session_id = ?
@@ -363,7 +386,7 @@ def search_chunks(session_id: str, payload: SearchRequest) -> Dict[str, List[Dic
         elif not query and start_time_ms is not None:
             rows = conn.execute(
                 """
-                SELECT id, start_ms, end_ms, text
+                SELECT id, start_ms, end_ms, text, notes
                 FROM chunks
                 WHERE session_id = ?
                   AND start_ms < ?
@@ -383,7 +406,7 @@ def search_chunks(session_id: str, payload: SearchRequest) -> Dict[str, List[Dic
 
             rows = conn.execute(
                 """
-                SELECT c.id, c.start_ms, c.end_ms, c.text
+                SELECT c.id, c.start_ms, c.end_ms, c.text, c.notes
                 FROM chunks_fts f
                 JOIN chunks c ON c.rowid = f.rowid
                 WHERE f.session_id = ?
@@ -402,11 +425,28 @@ def search_chunks(session_id: str, payload: SearchRequest) -> Dict[str, List[Dic
             "start_ms": row["start_ms"],
             "end_ms": row["end_ms"],
             "text": row["text"],
+            "notes": row["notes"],
         }
         for row in rows
     ]
 
     return {"results": results}
+
+@app.patch("/chunks/{chunk_id}", response_model=ChunkResponse)
+def update_chunk(chunk_id: str, payload: ChunkUpdateRequest) -> ChunkResponse:
+    """Update a chunk's notes field."""
+    fetch_chunk(chunk_id)  # Verify chunk exists
+    updates = payload.dict(exclude_unset=True)
+    if not updates:
+        return ChunkResponse(**fetch_chunk(chunk_id))
+
+    with sqlite3.connect(DB_PATH) as conn:
+        conn.execute(
+            "UPDATE chunks SET notes = ? WHERE id = ?",
+            (payload.notes, chunk_id),
+        )
+
+    return ChunkResponse(**fetch_chunk(chunk_id))
 
 @app.post("/sessions/{session_id}/media")
 async def upload_media(session_id: str, file: UploadFile = File(...)) -> Dict:
