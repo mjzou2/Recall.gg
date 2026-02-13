@@ -54,7 +54,7 @@ The foundation is search. The goal is team communication intelligence.
 - ✅ Pagination and chunk expansion (clickable text)
 
 **Chunk Interaction:**
-- ✅ **Smart button visibility** - Four action buttons per chunk (copy 📋, note 📝/✏️, bookmark ⭐/☆, expand ▼/▲)
+- ✅ **Smart button visibility** - Four buttons per chunk (copy 📋, note 📝/✏️, bookmark ⭐/☆, expand ▼/▲)
   - Hover-visible when collapsed (unless showing status)
   - Always visible when expanded or showing status (bookmarked/has note)
   - No layout shift: opacity transitions keep buttons in fixed positions
