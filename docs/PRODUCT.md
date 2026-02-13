@@ -22,8 +22,9 @@ Most VOD tools parse **game events** (kills, objectives, gold). RECALL.GG parses
 
 **Session Management:**
 - ✓ Create, list, edit, delete sessions
-- ✓ Session notes field (add context/description)
+- ✓ Session notes field (click-to-edit, 150 char limit)
 - ✓ Processing duration tracking
+- ✓ Polished UI with progressive disclosure, status badges, and distinct Active Session panel
 
 **Media Processing:**
 - ✓ Upload audio (mp3/m4a/wav) and video (mp4/mkv/avi)
@@ -208,10 +209,11 @@ Most VOD tools parse **game events** (kills, objectives, gold). RECALL.GG parses
 4. ✓ **Player position sync** - highlight active chunk during playback
 5. ✓ **Manual chunk annotations** - notes field with inline editing
 6. ✓ **Chunk inline editing** - fix transcription errors directly in UI
-7. ⚙️ **Bookmarks/favorites** - star chunks (1-2 hours)
+7. ✓ **Bookmarks/favorites** - star chunks, filter toggle
 8. ✓ **Fuzzy post-processing** - RapidFuzz correction
-9. ⚙️ **Synonym expansion** - hardcoded alias map for search (1-2 hours)
-10. ⚙️ **Demo preparation** - record video, write README (2-4 hours)
+9. ✓ **Sessions tab UI revamp** - progressive disclosure, status badges, polished Active Session panel
+10. ⚙️ **Synonym expansion** - hardcoded alias map for search (1-2 hours)
+11. ⚙️ **Demo preparation** - record video, write README (2-4 hours)
 
 **Total estimated: 12-20 hours → Target: Demo-ready by end of week**
 

@@ -65,6 +65,7 @@ The foundation is search. The goal is team communication intelligence.
 
 **UI/UX:**
 - ✅ **Dark theme** - Sleek purple-accented design inspired by Linear/Vercel
+- ✅ **Polished Sessions tab** - Progressive disclosure, status badges, relative time, distinct Active Session panel
 - ✅ Chronological chunk flow with minimal visual separation
 - ✅ Maximized player size for screensharing/presentation
 
