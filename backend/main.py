@@ -612,6 +612,10 @@ def normalize_lol_text(text: str) -> str:
         # Severe mishears fuzzy matching can't catch (score < 82)
         (r"\bcass?ante\b", "K'Sante"),
         (r"\baura\b", "Aurora"),
+        (r"\brookong\b", "Wukong"),
+        (r"\bni[kc]os?\b", "Neeko"),  # matches: niko, nico, nikos, nicos
+        (r"\bflush\b", "flash"),
+        (r"\bani\b", "Annie"),
         # Space-separated apostrophe champions (parts too short for fuzzy)
         (r"\bk sante\b", "K'Sante"),
         (r"\bksante\b", "K'Sante"),
@@ -624,8 +628,9 @@ def normalize_lol_text(text: str) -> str:
         (r"\bkai sa\b", "Kai'Sa"),
         # Short word mishears (< 4 chars, fuzzy skips)
         (r"\bchen\b", "Shen"),
+        (r"\bjacks?\b", "Jax"),  # matches: jax, jack, jacks, jack's (apostrophe stripped by re.IGNORECASE)
         # Short abbreviations (< 4 chars, fuzzy skips)
-        (r"\btp\b", "TP"),
+        (r"\b[dt]p\b", "TP"),  # matches: tp, dp
         (r"\bcc\b", "CC"),
         (r"\bcs\b", "CS"),
         (r"\badc\b", "ADC"),
