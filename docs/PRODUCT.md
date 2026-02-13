@@ -16,9 +16,9 @@ Most VOD tools parse **game events** (kills, objectives, gold). RECALL.GG parses
 ---
 
 ## MVP 1.0 (Complete Local Tool)
-**Status: In Progress → Target: Demo-ready in 2-3 days**
+**Status: ✓ Complete → Ready for demo**
 
-### Core Features (✓ = Implemented, ⚙️ = In Progress)
+### Core Features (✓ = Implemented)
 
 **Session Management:**
 - ✓ Create, list, edit, delete sessions
@@ -65,17 +65,22 @@ Most VOD tools parse **game events** (kills, objectives, gold). RECALL.GG parses
   - Instant highlight on timestamp click
 
 **Chunk Interaction:**
+- ✓ **Chunk action buttons** - Smart visibility system with four controls:
+  - Copy (📋): Copy timestamp URL to clipboard, hover-visible when collapsed
+  - Note (📝/✏️): Add coach notes, 100 char limit, shows ✏️ when empty, 📝 when has content
+  - Bookmark (⭐/☆): Star important chunks, always visible when bookmarked
+  - Expand/Collapse (▼/▲): Show full text, hover-visible when collapsed
+  - No layout shift: buttons use opacity transitions, positions remain static
 - ✓ **Manual chunk annotations** - Add coach notes to specific chunks
   - "Game-losing call", "Review with ADC", "Good macro example"
   - Stored as notes field on chunks table, searchable via FTS5
-  - 📌 indicator when note exists, directly clickable, 100 char limit
   - Auto-save on blur, Enter to save, Escape to cancel
 - ✓ **Chunk inline editing** - Fix transcription errors directly
   - Click expanded chunk text to edit → updates chunk text → improves future search
   - 1000 char limit, auto-save on blur/Enter, FTS5 auto-syncs
-  - Smart chevron UI: 📌 when has note, ▼ on hover, ▲ to collapse
-- ⚙️ **Bookmarks/favorites** - Star important chunks for quick access
-  - Filter view: "Show me all starred chunks from this session"
+- ✓ **Bookmarks/favorites** - Star important chunks for quick access
+  - Filter toggle: "Show bookmarked only" in search controls
+  - Bookmarked chunks show ⭐ even when collapsed
 
 ### Technical Stack
 - **Backend:** FastAPI (Python), SQLite with FTS5, faster-whisper, ffmpeg, RapidFuzz

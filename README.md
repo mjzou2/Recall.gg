@@ -47,22 +47,28 @@ The foundation is search. The goal is team communication intelligence.
 **Search & Navigation:**
 - ✅ **Keyword search** - Full-text search with BM25 ranking (SQLite FTS5), searches both transcript and notes
 - ✅ **Time range filtering** - Filter chunks by game time (MM:SS format)
+- ✅ **Bookmark filtering** - Filter to show only bookmarked chunks via "Show bookmarked only" toggle
 - ✅ **Embedded YouTube player** - Click timestamps to seek player instantly
 - ✅ **Player position sync** - Active chunk highlights and auto-scrolls as video plays (toggleable)
 - ✅ **Tab-based sidebar** - Switch between Sessions and Explore (transcript) views
 - ✅ Pagination and chunk expansion (clickable text)
-- ✅ Copy timestamp URL to clipboard
+
+**Chunk Interaction:**
+- ✅ **Smart button visibility** - Four action buttons per chunk (copy 📋, note 📝/✏️, bookmark ⭐/☆, expand ▼/▲)
+  - Hover-visible when collapsed (unless showing status)
+  - Always visible when expanded or showing status (bookmarked/has note)
+  - No layout shift: opacity transitions keep buttons in fixed positions
+- ✅ **Copy timestamp URL** to clipboard with 2-second confirmation
+- ✅ **Bookmarks/favorites** - Star important chunks for quick access, searchable via filter toggle
 - ✅ **Chunk inline editing** - Edit transcribed text directly (1000 char limit, auto-save on blur/Enter)
-- ✅ **Chunk annotations** - Add coach notes to chunks (100 char limit, auto-save, searchable)
+- ✅ **Chunk annotations** - Add coach notes to chunks (100 char limit, auto-save, searchable via FTS5)
 
 **UI/UX:**
 - ✅ **Dark theme** - Sleek purple-accented design inspired by Linear/Vercel
 - ✅ Chronological chunk flow with minimal visual separation
 - ✅ Maximized player size for screensharing/presentation
 
-**In-progress:**
-- ⚙️ Bookmarks/favorites (star important chunks)
-- ⚙️ Demo video showing the app and its features at the end of MVP 1.0
+**MVP 1.0 Status:** ✅ Complete and ready for demo
 
 See [PRODUCT.md](docs/PRODUCT.md) for the full roadmap (MVP 1.5, 2.0).
 
@@ -187,7 +193,7 @@ vodcomms/
 
 ## Roadmap
 
-**MVP 1.0 (Current):** Complete local tool with search, transcription, and time filtering
+**MVP 1.0 (✅ Complete):** Full local tool with search, transcription, time filtering, bookmarks, and annotations
 **MVP 1.5 (Next):** Speaker diarization, LLM-powered highlights, semantic search, multi-session search
 **MVP 2.0 (Future):** Production SaaS with teams, cloud hosting, fine-tuned models, live transcription
 
