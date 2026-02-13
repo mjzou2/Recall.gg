@@ -65,9 +65,11 @@ Most VOD tools parse **game events** (kills, objectives, gold). RECALL.GG parses
   - Instant highlight on timestamp click
 
 **Chunk Interaction:**
-- ⚙️ **Manual chunk annotations** - Add coach notes to specific chunks
+- ✓ **Manual chunk annotations** - Add coach notes to specific chunks
   - "Game-losing call", "Review with ADC", "Good macro example"
-  - Stored as notes field on chunks table
+  - Stored as notes field on chunks table, searchable via FTS5
+  - 📌 indicator when note exists, ✏️ edit button, 100 char limit
+  - Auto-save on blur, Enter to save, Escape to cancel
 - ⚙️ **Chunk inline editing** - Fix transcription errors directly
   - Click to edit → updates chunk text → improves future search
 - ⚙️ **Bookmarks/favorites** - Star important chunks for quick access
@@ -196,8 +198,8 @@ Most VOD tools parse **game events** (kills, objectives, gold). RECALL.GG parses
 1. ✓ **Embedded YouTube player** - iframe API integration with seeking
 2. ✓ **Dark theme UI** - purple-accented design inspired by Linear/Vercel
 3. ✓ **Tab-based sidebar** - Sessions / Explore navigation
-4. ⚙️ **Player position sync** - highlight active chunk during playback (2-3 hours)
-5. ⚙️ **Manual chunk annotations** - notes field (2-3 hours)
+4. ✓ **Player position sync** - highlight active chunk during playback
+5. ✓ **Manual chunk annotations** - notes field with inline editing
 6. ⚙️ **Chunk inline editing** - fix transcription errors (2-3 hours)
 7. ⚙️ **Bookmarks/favorites** - star chunks (1-2 hours)
 8. ✓ **Fuzzy post-processing** - RapidFuzz correction

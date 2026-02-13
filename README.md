@@ -45,13 +45,14 @@ The foundation is search. The goal is team communication intelligence.
 - ✅ ~60% base accuracy on League terms, targeting 70-80% with fuzzy correction
 
 **Search & Navigation:**
-- ✅ **Keyword search** - Full-text search with BM25 ranking (SQLite FTS5)
+- ✅ **Keyword search** - Full-text search with BM25 ranking (SQLite FTS5), searches both transcript and notes
 - ✅ **Time range filtering** - Filter chunks by game time (MM:SS format)
 - ✅ **Embedded YouTube player** - Click timestamps to seek player instantly
 - ✅ **Player position sync** - Active chunk highlights and auto-scrolls as video plays (toggleable)
 - ✅ **Tab-based sidebar** - Switch between Sessions and Explore (transcript) views
 - ✅ Pagination and chunk expansion (clickable text)
 - ✅ Copy timestamp URL to clipboard
+- ✅ **Chunk annotations** - Add coach notes to chunks (100 char limit, auto-save, searchable)
 
 **UI/UX:**
 - ✅ **Dark theme** - Sleek purple-accented design inspired by Linear/Vercel
@@ -59,7 +60,6 @@ The foundation is search. The goal is team communication intelligence.
 - ✅ Maximized player size for screensharing/presentation
 
 **In-progress:**
-- ⚙️ Manual chunk annotations (add coach notes to chunks)
 - ⚙️ Chunk inline editing (fix transcription errors)
 - ⚙️ Bookmarks/favorites (star important chunks)
 - ⚙️ Demo video showing the app and its features at the end of MVP 1.0
