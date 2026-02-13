@@ -110,6 +110,9 @@ const getStatusDisplay = (status) => {
 }
 
 function App() {
+  // Feature flags
+  const SHOW_STATUS_BOX = false // Set to true to show status/error badges in header
+
   const [title, setTitle] = useState('')
   const [youtubeUrl, setYoutubeUrl] = useState('')
   const [notes, setNotes] = useState('')
@@ -923,17 +926,15 @@ function App() {
     <div className="page">
       <header>
         <div>
-          <p className="eyebrow">Scrim reviews made efficient</p>
           <h1>RECALL.GG</h1>
-          <p className="lede">
-            Create a session, upload a VOD or audio file, and generate
-            chunks.
-          </p>
+          <p className="eyebrow">Scrim reviews made efficient</p>
         </div>
-        <div className="status">
-          <span className="badge">{status || 'Idle'}</span>
-          {error && <span className="badge danger">{error}</span>}
-        </div>
+        {SHOW_STATUS_BOX && (
+          <div className="status">
+            <span className="badge">{status || 'Idle'}</span>
+            {error && <span className="badge danger">{error}</span>}
+          </div>
+        )}
       </header>
 
       <section className="main-layout">
