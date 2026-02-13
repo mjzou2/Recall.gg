@@ -119,6 +119,8 @@ function App() {
   const [autoScrollEnabled, setAutoScrollEnabled] = useState(true)
   const [editingNoteChunkId, setEditingNoteChunkId] = useState(null)
   const [noteText, setNoteText] = useState('')
+  const [editingTextChunkId, setEditingTextChunkId] = useState(null)
+  const [chunkText, setChunkText] = useState('')
 
   const chunkListRef = useRef(null)
   const isAutoScrollingRef = useRef(false)
@@ -417,6 +419,52 @@ function App() {
       setEditingNoteChunkId(null)
       setNoteText('')
       setStatus('Note saved')
+    } catch (err) {
+      setError(err.message)
+    }
+  }
+
+  const handleEditText = (chunk) => {
+    const chunkKey =
+      chunk.id ?? `${chunk.start_ms}-${chunk.end_ms}-${chunk.text?.length ?? 0}`
+    setEditingTextChunkId(chunkKey)
+    setChunkText(chunk.text || '')
+  }
+
+  const handleCancelText = () => {
+    setEditingTextChunkId(null)
+    setChunkText('')
+  }
+
+  const handleSaveText = async (chunk) => {
+    if (!chunk.id) return
+    const trimmedText = chunkText.trim()
+    if (!trimmedText) {
+      setError('Text cannot be empty')
+      return
+    }
+    try {
+      const res = await fetch(`${API_BASE}/chunks/${chunk.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          text: trimmedText,
+        }),
+      })
+      if (!res.ok) {
+        const errorData = await res.json()
+        throw new Error(errorData.detail || 'Failed to save text')
+      }
+      const updatedChunk = await res.json()
+
+      // Update the chunk in local state
+      setChunks((prev) =>
+        prev.map((c) => (c.id === updatedChunk.id ? updatedChunk : c))
+      )
+
+      setEditingTextChunkId(null)
+      setChunkText('')
+      setStatus('Text saved')
     } catch (err) {
       setError(err.message)
     }
@@ -1170,7 +1218,7 @@ function App() {
                             {copiedChunkId === chunkKey ? '✓' : '📋'}
                           </button>
                         )}
-                        {chunk.notes && !isExpanded && (
+                        {!isExpanded && chunk.notes && (
                           <button
                             type="button"
                             className="note-indicator"
@@ -1180,25 +1228,72 @@ function App() {
                             📌
                           </button>
                         )}
-                        {isExpanded && editingNoteChunkId !== chunkKey && (
+                        {!isExpanded && !chunk.notes && (
                           <button
                             type="button"
-                            className="edit-note-btn"
-                            onClick={() => handleEditNote(chunk)}
-                            title={chunk.notes ? 'Edit note' : 'Add note'}
+                            className="expand-indicator"
+                            onClick={() => toggleChunkExpanded(chunkKey)}
+                            title="Click to expand"
                           >
-                            ✏️
+                            ▼
+                          </button>
+                        )}
+                        {isExpanded && editingTextChunkId !== chunkKey && editingNoteChunkId !== chunkKey && (
+                          <button
+                            type="button"
+                            className="collapse-btn"
+                            onClick={() => toggleChunkExpanded(chunkKey)}
+                            title="Click to collapse"
+                          >
+                            ⌃
                           </button>
                         )}
                       </div>
                     </div>
-                    <p
-                      className="chunk-text"
-                      onClick={() => toggleChunkExpanded(chunkKey)}
-                      title={isExpanded ? 'Click to collapse' : 'Click to expand'}
-                    >
-                      {isExpanded ? chunk.text : previewText}
-                    </p>
+                    {editingTextChunkId === chunkKey ? (
+                      <div className="chunk-text-edit">
+                        <label className="field">
+                          <span>Text ({1000 - chunkText.length} chars left)</span>
+                          <textarea
+                            value={chunkText}
+                            onChange={(e) => setChunkText(e.target.value)}
+                            onBlur={() => handleSaveText(chunk)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' && !e.shiftKey) {
+                                e.preventDefault()
+                                handleSaveText(chunk)
+                              } else if (e.key === 'Escape') {
+                                handleCancelText()
+                              }
+                            }}
+                            maxLength={1000}
+                            rows={5}
+                            placeholder="Chunk text..."
+                            autoFocus
+                          />
+                        </label>
+                      </div>
+                    ) : (
+                      <p
+                        className={`chunk-text ${isExpanded && editingNoteChunkId !== chunkKey ? 'editable' : ''}`}
+                        onClick={() => {
+                          if (isExpanded && editingNoteChunkId !== chunkKey) {
+                            handleEditText(chunk)
+                          } else if (!isExpanded) {
+                            toggleChunkExpanded(chunkKey)
+                          }
+                        }}
+                        title={
+                          isExpanded && editingNoteChunkId !== chunkKey
+                            ? 'Click to edit'
+                            : !isExpanded
+                            ? 'Click to expand'
+                            : ''
+                        }
+                      >
+                        {isExpanded ? chunk.text : previewText}
+                      </p>
+                    )}
                     {isExpanded && editingNoteChunkId === chunkKey && (
                       <div className="chunk-note-edit">
                         <label className="field">

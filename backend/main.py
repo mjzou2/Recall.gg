@@ -182,6 +182,7 @@ class ChunkResponse(BaseModel):
 
 class ChunkUpdateRequest(BaseModel):
     notes: Optional[str] = None
+    text: Optional[str] = None
 
 class SearchRequest(BaseModel):
     query: str = ""
@@ -434,16 +435,44 @@ def search_chunks(session_id: str, payload: SearchRequest) -> Dict[str, List[Dic
 
 @app.patch("/chunks/{chunk_id}", response_model=ChunkResponse)
 def update_chunk(chunk_id: str, payload: ChunkUpdateRequest) -> ChunkResponse:
-    """Update a chunk's notes field."""
+    """Update a chunk's notes and/or text field."""
     fetch_chunk(chunk_id)  # Verify chunk exists
     updates = payload.dict(exclude_unset=True)
     if not updates:
         return ChunkResponse(**fetch_chunk(chunk_id))
 
+    # Validate and prepare text if provided
+    if "text" in updates:
+        text = updates["text"]
+        if text is not None:
+            text = text.strip()
+            if not text:
+                raise HTTPException(status_code=400, detail="Text cannot be empty")
+            if len(text) > 1000:
+                raise HTTPException(status_code=400, detail="Text cannot exceed 1000 characters")
+            updates["text"] = text
+
+    # Validate notes if provided (existing validation)
+    if "notes" in updates and updates["notes"] is not None:
+        notes = updates["notes"].strip()
+        updates["notes"] = notes
+
+    # Build dynamic UPDATE query
+    set_clauses = []
+    values = []
+    if "notes" in updates:
+        set_clauses.append("notes = ?")
+        values.append(updates["notes"])
+    if "text" in updates:
+        set_clauses.append("text = ?")
+        values.append(updates["text"])
+
+    values.append(chunk_id)
+
     with sqlite3.connect(DB_PATH) as conn:
         conn.execute(
-            "UPDATE chunks SET notes = ? WHERE id = ?",
-            (payload.notes, chunk_id),
+            f"UPDATE chunks SET {', '.join(set_clauses)} WHERE id = ?",
+            values,
         )
 
     return ChunkResponse(**fetch_chunk(chunk_id))
