@@ -54,10 +54,7 @@ The foundation is search. The goal is team communication intelligence.
 - ✅ Pagination and chunk expansion (clickable text)
 
 **Chunk Interaction:**
-- ✅ **Smart button visibility** - Four buttons per chunk (copy 📋, note 📝/✏️, bookmark ⭐/☆, expand ▼/▲)
-  - Hover-visible when collapsed (unless showing status)
-  - Always visible when expanded or showing status (bookmarked/has note)
-  - No layout shift: opacity transitions keep buttons in fixed positions
+- ✅ **Action buttons** - Four per chunk (copy 📋, note 📝/✏️, bookmark ⭐/☆, expand ▼/▲)
 - ✅ **Copy timestamp URL** to clipboard with 2-second confirmation
 - ✅ **Bookmarks/favorites** - Star important chunks for quick access, searchable via filter toggle
 - ✅ **Chunk inline editing** - Edit transcribed text directly (1000 char limit, auto-save on blur/Enter)
