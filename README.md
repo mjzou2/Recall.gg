@@ -178,15 +178,25 @@ Frontend: http://localhost:5173
 ```
 vodcomms/
 ├── backend/
-│   ├── main.py              # FastAPI app (sessions, transcription, search)
+│   ├── main.py              # Entry point for uvicorn
+│   ├── app/
+│   │   ├── main.py          # FastAPI app initialization
+│   │   ├── config.py        # Environment config and constants
+│   │   ├── models.py        # Pydantic request/response schemas
+│   │   ├── database.py      # SQLite operations and FTS5 queries
+│   │   ├── routers/         # API endpoints (sessions, chunks, media)
+│   │   └── services/        # Business logic (audio, transcription, text_processing)
 │   ├── term_bank.json       # League-specific vocabulary (305 terms)
 │   ├── requirements.txt     # Python dependencies
 │   ├── data/                # SQLite DB + uploaded media
 │   └── .env.example         # Environment variables template
 ├── frontend/
 │   ├── src/
-│   │   ├── App.jsx          # Main React component (~913 lines)
-│   │   └── App.css          # Dark theme styling with purple accents
+│   │   ├── App.jsx          # Main component (~150 lines)
+│   │   ├── components/      # React components (Header, SessionsPanel, ExplorePanel, YouTubePlayer)
+│   │   ├── hooks/           # Custom hooks (useAppState, useYouTubePlayer)
+│   │   ├── utils/           # Utilities (formatters, api client)
+│   │   └── styles/          # Global CSS (variables, base styles)
 │   ├── package.json         # Node dependencies
 │   └── vite.config.js       # Vite configuration
 └── docs/

@@ -85,7 +85,9 @@ Most VOD tools parse **game events** (kills, objectives, gold). RECALL.GG parses
 
 ### Technical Stack
 - **Backend:** FastAPI (Python), SQLite with FTS5, faster-whisper, ffmpeg, RapidFuzz
+  - Modular structure: routers (API endpoints), services (business logic), database (queries)
 - **Frontend:** React + Vite, dark theme with purple accents (Linear/Vercel aesthetic)
+  - Component-based architecture with custom hooks and CSS modules
 - **Environment:** WSL2, GPU-accelerated (CUDA 12.9), local-first (no cloud)
 - **Data:** All sessions/chunks/audio stored locally in `backend/data/`
 
@@ -218,7 +220,7 @@ Most VOD tools parse **game events** (kills, objectives, gold). RECALL.GG parses
 **Total estimated: 12-20 hours → Target: Demo-ready by end of week**
 
 ### Post-Demo Priorities (Driven by User Feedback)
-- Code refactor (split main.py and App.jsx into modules)
+- ✓ Code refactor (backend: modular routers/services, frontend: components/hooks/CSS modules)
 - Component library / light mode toggle (dark mode done)
 - Real-time progress bar for transcription
 - Evaluation harness for measuring transcription quality improvements
