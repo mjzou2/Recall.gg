@@ -109,6 +109,7 @@ function App() {
                 pageIndex={pageIndex}
                 setPageIndex={setPageIndex}
                 onSearch={searchChunks}
+                onReloadSession={loadSessionDetails}
                 onUpdateChunk={updateChunk}
                 onTimestampClick={handleTimestampClick}
               />

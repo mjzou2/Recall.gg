@@ -33,6 +33,7 @@ export const ExplorePanel = ({
   pageIndex,
   setPageIndex,
   onSearch,
+  onReloadSession,
   onUpdateChunk,
   onTimestampClick,
 }) => {
@@ -84,8 +85,8 @@ export const ExplorePanel = ({
       // Reset chunk views
       setPageIndex(0)
       setExpandedChunkIds(new Set())
-      // Load all chunks by calling search with no params
-      await onSearch(sessionId, {})
+      // Reload session to get all chunks
+      await onReloadSession(sessionId)
       return
     }
 
@@ -149,7 +150,7 @@ export const ExplorePanel = ({
     setExpandedChunkIds(new Set())
 
     if (sessionId) {
-      await onSearch(sessionId, {})
+      await onReloadSession(sessionId)
     }
   }
 

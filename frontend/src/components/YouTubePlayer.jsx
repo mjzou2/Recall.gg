@@ -8,13 +8,17 @@ import styles from './YouTubePlayer.module.css'
  * @param {boolean} props.hasSession - Whether a session is currently selected
  */
 export const YouTubePlayer = ({ videoUrl, hasSession }) => {
+  // Always render #youtube-player div so the YT API can manage it.
+  // Hide it when there's no video to prevent DOM removal crashes.
   return (
-    <div className={styles.mainContent}>
-      {videoUrl ? (
-        <div className={styles.playerContainer}>
-          <div id="youtube-player"></div>
-        </div>
-      ) : (
+    <>
+      <div
+        className={styles.playerContainer}
+        style={{ display: videoUrl ? 'block' : 'none' }}
+      >
+        <div id="youtube-player"></div>
+      </div>
+      {!videoUrl && (
         <div className={styles.noPlayerMessage}>
           <p className="hint">
             {hasSession
@@ -23,6 +27,6 @@ export const YouTubePlayer = ({ videoUrl, hasSession }) => {
           </p>
         </div>
       )}
-    </div>
+    </>
   )
 }
