@@ -1,0 +1,19 @@
+:root {
+  font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  color: #E4E4E7;
+  background: #0A0A0D;
+  --pane-h: 85vh;
+
+  /* Dark theme color palette */
+  --bg-base: #0A0A0D;
+  --bg-elevated: #18181B;
+  --bg-hover: #27272A;
+  --purple-primary: #7C3AED;
+  --purple-secondary: #6D28D9;
+  --purple-glow: rgba(124, 58, 237, 0.15);
+  --text-primary: #E4E4E7;
+  --text-secondary: #A1A1AA;
+  --text-tertiary: #71717A;
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-medium: rgba(255, 255, 255, 0.12);
+}

@@ -1,0 +1,1632 @@
+import { useEffect, useState, useRef } from 'react'
+import './App.css'
+const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8000'
+
+const formatTime = (ms) => {
+  const totalSeconds = Math.floor(ms / 1000)
+  const minutes = Math.floor(totalSeconds / 60)
+  const seconds = totalSeconds % 60
+  return `${minutes}:${seconds.toString().padStart(2, '0')}`
+}
+
+const parseTime = (timeStr) => {
+  if (!timeStr || !timeStr.trim()) return null
+  const parts = timeStr.trim().split(':')
+  if (parts.length !== 2) return null
+  const minutes = parseInt(parts[0], 10)
+  const seconds = parseInt(parts[1], 10)
+  if (isNaN(minutes) || isNaN(seconds)) return null
+  if (seconds < 0 || seconds >= 60) return null
+  if (minutes < 0) return null
+  return (minutes * 60 + seconds) * 1000
+}
+
+const formatDuration = (seconds) => {
+  if (seconds == null) return null
+  const mins = Math.floor(seconds / 60)
+  const secs = seconds % 60
+  if (mins === 0) return `${secs}s`
+  return `${mins}m ${secs}s`
+}
+
+const shortenUrl = (url) => {
+  if (!url) return ''
+  try {
+    const parsed = new URL(url)
+    const tail = parsed.pathname.split('/').filter(Boolean).pop()
+    const fragment = parsed.search || parsed.hash || ''
+    const suffix = tail ? `${tail}${fragment}` : fragment.replace(/^\?/, '')
+    return `${parsed.hostname}${suffix ? `/${suffix}` : ''}`
+  } catch {
+    const trimmed = url.replace(/^https?:\/\//, '')
+    const parts = trimmed.split('/')
+    if (parts.length <= 1) return trimmed
+    const last = parts[parts.length - 1] || parts[parts.length - 2]
+    return `${parts[0]}/${last}`
+  }
+}
+
+const basename = (path) => {
+  if (!path) return ''
+  const normalized = path.split('?')[0]
+  const parts = normalized.split('/')
+  return parts[parts.length - 1] || normalized
+}
+
+const buildYoutubeUrlWithTimestamp = (baseUrl, startMs) => {
+  if (!baseUrl) return null
+  const seconds = Math.floor(startMs / 1000)
+  try {
+    const url = new URL(baseUrl)
+    url.searchParams.set('t', `${seconds}s`)
+    return url.toString()
+  } catch {
+    return `${baseUrl}${baseUrl.includes('?') ? '&' : '?'}t=${seconds}s`
+  }
+}
+
+const extractYoutubeVideoId = (url) => {
+  if (!url) return null
+  try {
+    const parsed = new URL(url)
+    // Handle youtube.com/watch?v=VIDEO_ID
+    if (parsed.hostname.includes('youtube.com') && parsed.searchParams.has('v')) {
+      return parsed.searchParams.get('v')
+    }
+    // Handle youtu.be/VIDEO_ID
+    if (parsed.hostname === 'youtu.be') {
+      return parsed.pathname.slice(1) // Remove leading slash
+    }
+  } catch {
+    // Invalid URL
+  }
+  return null
+}
+
+const formatRelativeTime = (isoDate) => {
+  const now = new Date()
+  const date = new Date(isoDate)
+  const diffMs = now - date
+  const diffMins = Math.floor(diffMs / 60000)
+  const diffHours = Math.floor(diffMs / 3600000)
+  const diffDays = Math.floor(diffMs / 86400000)
+
+  if (diffMins < 1) return 'Just now'
+  if (diffMins < 60) return `${diffMins}m ago`
+  if (diffHours < 24) return `${diffHours}h ago`
+  if (diffDays < 7) return `${diffDays}d ago`
+  return new Date(isoDate).toLocaleDateString()
+}
+
+const getStatusDisplay = (status) => {
+  const map = {
+    created: 'Created',
+    uploaded: 'Uploaded',
+    processing: 'Processing...',
+    ready: 'Ready',
+    failed: 'Failed'
+  }
+  return map[status] || status
+}
+
+function App() {
+  // Feature flags
+  const SHOW_STATUS_BOX = false // Set to true to show status/error badges in header
+
+  const [title, setTitle] = useState('')
+  const [youtubeUrl, setYoutubeUrl] = useState('')
+  const [notes, setNotes] = useState('')
+  const [sessions, setSessions] = useState([])
+  const [sessionId, setSessionId] = useState('')
+  const [sessionDetails, setSessionDetails] = useState(null)
+  const [file, setFile] = useState(null)
+  const [chunks, setChunks] = useState([])
+  const [status, setStatus] = useState('')
+  const [error, setError] = useState('')
+  const [isCreating, setIsCreating] = useState(false)
+  const [isUploading, setIsUploading] = useState(false)
+  const [isProcessing, setIsProcessing] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [isSearching, setIsSearching] = useState(false)
+  const [lastQuery, setLastQuery] = useState('')
+  const [startTime, setStartTime] = useState('')
+  const [endTime, setEndTime] = useState('')
+  const [timeRangeError, setTimeRangeError] = useState('')
+  const [lastTimeRange, setLastTimeRange] = useState('')
+  const [bookmarkedOnly, setBookmarkedOnly] = useState(false)
+  const [pageIndex, setPageIndex] = useState(0)
+  const [expandedChunkIds, setExpandedChunkIds] = useState(new Set())
+  const [copiedChunkId, setCopiedChunkId] = useState(null)
+  const [isEditingSession, setIsEditingSession] = useState(false)
+  const [editTitle, setEditTitle] = useState('')
+  const [editYoutubeUrl, setEditYoutubeUrl] = useState('')
+  const [editNotes, setEditNotes] = useState('')
+  const [elapsedSeconds, setElapsedSeconds] = useState(0)
+  const [sidebarTab, setSidebarTab] = useState('sessions')
+  const [youtubePlayer, setYoutubePlayer] = useState(null)
+  const [isYoutubeApiReady, setIsYoutubeApiReady] = useState(false)
+  const [activeChunkId, setActiveChunkId] = useState(null)
+  const [autoScrollEnabled, setAutoScrollEnabled] = useState(true)
+  const [editingNoteChunkId, setEditingNoteChunkId] = useState(null)
+  const [noteText, setNoteText] = useState('')
+  const [editingTextChunkId, setEditingTextChunkId] = useState(null)
+  const [chunkText, setChunkText] = useState('')
+  const [isCreatingNew, setIsCreatingNew] = useState(false)
+  const [isEditingSessionNotes, setIsEditingSessionNotes] = useState(false)
+  const [sessionNotesText, setSessionNotesText] = useState('')
+
+  const chunkListRef = useRef(null)
+  const isAutoScrollingRef = useRef(false)
+  const lastScrollTopRef = useRef(0)
+
+  const pageSize = 25
+  const canSearch = Boolean(sessionId)
+
+  useEffect(() => {
+    loadSessions()
+  }, [])
+
+  useEffect(() => {
+    const totalPages = Math.max(1, Math.ceil(chunks.length / pageSize))
+    if (pageIndex > totalPages - 1) {
+      setPageIndex(0)
+    }
+  }, [chunks.length, pageIndex])
+
+  // Timer for tracking elapsed processing time
+  useEffect(() => {
+    if (!isProcessing) {
+      return
+    }
+    // Reset elapsed time when processing starts
+    setElapsedSeconds(0)
+    const interval = setInterval(() => {
+      setElapsedSeconds((prev) => prev + 1)
+    }, 1000)
+    // Cleanup: clear interval when processing ends or component unmounts
+    return () => clearInterval(interval)
+  }, [isProcessing])
+
+  // Load YouTube iframe API
+  useEffect(() => {
+    // Check if API is already loaded
+    if (window.YT && window.YT.Player) {
+      setIsYoutubeApiReady(true)
+      return
+    }
+
+    // Load the API script if not already present
+    if (!window.YT) {
+      const tag = document.createElement('script')
+      tag.src = 'https://www.youtube.com/iframe_api'
+      const firstScriptTag = document.getElementsByTagName('script')[0]
+      firstScriptTag.parentNode.insertBefore(tag, firstScriptTag)
+    }
+
+    // Set up the callback for when API is ready
+    window.onYouTubeIframeAPIReady = () => {
+      setIsYoutubeApiReady(true)
+    }
+  }, [])
+
+  // Initialize YouTube player when session loads with youtube_url
+  useEffect(() => {
+    // Clean up existing player
+    if (youtubePlayer && youtubePlayer.destroy) {
+      try {
+        youtubePlayer.destroy()
+      } catch (err) {
+        console.error('Error destroying existing player:', err)
+      }
+      setYoutubePlayer(null)
+    }
+
+    // Check if we have everything needed to create a player
+    if (!sessionDetails?.youtube_url || !isYoutubeApiReady) {
+      return
+    }
+
+    const videoId = extractYoutubeVideoId(sessionDetails.youtube_url)
+    if (!videoId) {
+      console.warn('Could not extract video ID from:', sessionDetails.youtube_url)
+      return
+    }
+
+    // Check if the player container exists
+    const container = document.getElementById('youtube-player')
+    if (!container) {
+      console.warn('YouTube player container not found')
+      return
+    }
+
+    // Create the player
+    try {
+      const player = new window.YT.Player('youtube-player', {
+        videoId: videoId,
+        width: '100%',
+        height: '100%',
+        playerVars: {
+          autoplay: 0,
+          modestbranding: 1,
+        },
+        events: {
+          onReady: (event) => {
+            setYoutubePlayer(event.target)
+          },
+        },
+      })
+
+      // Cleanup on unmount or session change
+      return () => {
+        if (player && player.destroy) {
+          try {
+            player.destroy()
+          } catch (err) {
+            console.error('Error destroying player in cleanup:', err)
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Error creating YouTube player:', err)
+    }
+  }, [sessionDetails?.youtube_url, isYoutubeApiReady])
+
+  // Player position sync - poll current time and highlight active chunk
+  useEffect(() => {
+    if (!youtubePlayer || !youtubePlayer.getCurrentTime || chunks.length === 0) {
+      return
+    }
+
+    const interval = setInterval(() => {
+      try {
+        // Check if player still exists and is valid
+        if (!youtubePlayer || !youtubePlayer.getCurrentTime || !youtubePlayer.getPlayerState) {
+          return
+        }
+
+        // Only update position when playing
+        const playerState = youtubePlayer.getPlayerState()
+        if (playerState !== window.YT?.PlayerState?.PLAYING) {
+          return
+        }
+
+        const currentSeconds = youtubePlayer.getCurrentTime()
+        const currentMs = Math.floor(currentSeconds * 1000)
+
+      // Find the chunk that contains the current timestamp
+      const activeChunk = chunks.find(
+        (chunk) => chunk.start_ms <= currentMs && currentMs < chunk.end_ms
+      )
+
+      if (activeChunk) {
+        const chunkKey =
+          activeChunk.id ??
+          `${activeChunk.start_ms}-${activeChunk.end_ms}-${activeChunk.text?.length ?? 0}`
+
+        setActiveChunkId(chunkKey)
+
+        // Auto-scroll to active chunk if enabled
+        if (autoScrollEnabled) {
+          // Find which page this chunk is on
+          const chunkIndex = chunks.findIndex((chunk) => {
+            const key =
+              chunk.id ?? `${chunk.start_ms}-${chunk.end_ms}-${chunk.text?.length ?? 0}`
+            return key === chunkKey
+          })
+
+          if (chunkIndex !== -1) {
+            const targetPage = Math.floor(chunkIndex / pageSize)
+
+            // If chunk is on a different page, switch to that page first
+            if (targetPage !== pageIndex) {
+              setPageIndex(targetPage)
+              // Wait for React to re-render the new page before scrolling
+              setTimeout(() => {
+                isAutoScrollingRef.current = true
+                const chunkElement = document.querySelector(
+                  `[data-chunk-key="${chunkKey}"]`
+                )
+                if (chunkElement) {
+                  chunkElement.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'nearest',
+                  })
+                }
+                setTimeout(() => {
+                  isAutoScrollingRef.current = false
+                }, 1000)
+              }, 100)
+            } else {
+              // Same page, scroll immediately
+              isAutoScrollingRef.current = true
+              const chunkElement = document.querySelector(
+                `[data-chunk-key="${chunkKey}"]`
+              )
+              if (chunkElement) {
+                chunkElement.scrollIntoView({
+                  behavior: 'smooth',
+                  block: 'nearest',
+                })
+              }
+              setTimeout(() => {
+                isAutoScrollingRef.current = false
+              }, 1000)
+            }
+          }
+        }
+      }
+      } catch (err) {
+        // Silently catch errors to prevent crashes during player state changes
+        console.error('Error in player position sync:', err)
+      }
+    }, 500)
+
+    return () => clearInterval(interval)
+  }, [youtubePlayer, chunks, autoScrollEnabled])
+
+  // Disable auto-scroll when user manually scrolls
+  useEffect(() => {
+    const container = chunkListRef.current
+    if (!container) return
+
+    // Initialize last scroll position
+    lastScrollTopRef.current = container.scrollTop
+
+    const handleScroll = () => {
+      // Only disable if this is a user-initiated scroll, not a programmatic one
+      if (!isAutoScrollingRef.current && autoScrollEnabled) {
+        const scrollDistance = Math.abs(container.scrollTop - lastScrollTopRef.current)
+
+        // Only disable if user scrolled more than 50 pixels (prevents accidental tiny scrolls)
+        if (scrollDistance > 50) {
+          setAutoScrollEnabled(false)
+        }
+      }
+
+      // Update last scroll position
+      lastScrollTopRef.current = container.scrollTop
+    }
+
+    container.addEventListener('scroll', handleScroll)
+    return () => container.removeEventListener('scroll', handleScroll)
+  }, [autoScrollEnabled])
+
+  const resetChunkViews = () => {
+    setPageIndex(0)
+    setExpandedChunkIds(new Set())
+  }
+
+  const getPreviewText = (text) => {
+    if (!text) return ''
+    const firstLine = text.split('\n')[0]
+    if (firstLine.length > 140) return `${firstLine.slice(0, 140)}...`
+    if (text.length > firstLine.length) return `${firstLine}...`
+    return firstLine
+  }
+
+  const toggleChunkExpanded = (chunkKey) => {
+    setExpandedChunkIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(chunkKey)) {
+        next.delete(chunkKey)
+      } else {
+        next.add(chunkKey)
+      }
+      return next
+    })
+  }
+
+  const handleCopyTimestamp = async (chunkKey, youtubeLink) => {
+    if (!youtubeLink) return
+    try {
+      await navigator.clipboard.writeText(youtubeLink)
+      setCopiedChunkId(chunkKey)
+      setTimeout(() => setCopiedChunkId(null), 2000) // Clear after 2 seconds
+    } catch (err) {
+      console.error('Failed to copy:', err)
+    }
+  }
+
+  const handleTimestampClick = (chunk) => {
+    // Immediately highlight the clicked chunk
+    const chunkKey =
+      chunk.id ?? `${chunk.start_ms}-${chunk.end_ms}-${chunk.text?.length ?? 0}`
+    setActiveChunkId(chunkKey)
+
+    if (youtubePlayer && youtubePlayer.seekTo) {
+      const seconds = Math.floor(chunk.start_ms / 1000)
+      youtubePlayer.seekTo(seconds, true)
+    } else {
+      // Fallback to opening in new tab if player not available
+      const youtubeLink = buildYoutubeUrlWithTimestamp(
+        sessionDetails?.youtube_url,
+        chunk.start_ms
+      )
+      if (youtubeLink) {
+        window.open(youtubeLink, '_blank')
+      }
+    }
+  }
+
+  const handleEditNote = (chunk) => {
+    const chunkKey =
+      chunk.id ?? `${chunk.start_ms}-${chunk.end_ms}-${chunk.text?.length ?? 0}`
+    setEditingNoteChunkId(chunkKey)
+    setNoteText(chunk.notes || '')
+  }
+
+  const handleCancelNote = () => {
+    setEditingNoteChunkId(null)
+    setNoteText('')
+  }
+
+  const handleSaveNote = async (chunk) => {
+    if (!chunk.id) return
+    try {
+      const res = await fetch(`${API_BASE}/chunks/${chunk.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          notes: noteText.trim() || null,
+        }),
+      })
+      if (!res.ok) throw new Error('Failed to save note')
+      const updatedChunk = await res.json()
+
+      // Update the chunk in local state
+      setChunks((prev) =>
+        prev.map((c) => (c.id === updatedChunk.id ? updatedChunk : c))
+      )
+
+      setEditingNoteChunkId(null)
+      setNoteText('')
+      setStatus('Note saved')
+    } catch (err) {
+      setError(err.message)
+    }
+  }
+
+  const handleEditText = (chunk) => {
+    const chunkKey =
+      chunk.id ?? `${chunk.start_ms}-${chunk.end_ms}-${chunk.text?.length ?? 0}`
+    setEditingTextChunkId(chunkKey)
+    setChunkText(chunk.text || '')
+  }
+
+  const handleCancelText = () => {
+    setEditingTextChunkId(null)
+    setChunkText('')
+  }
+
+  const handleSaveText = async (chunk) => {
+    if (!chunk.id) return
+    const trimmedText = chunkText.trim()
+    if (!trimmedText) {
+      setError('Text cannot be empty')
+      return
+    }
+    try {
+      const res = await fetch(`${API_BASE}/chunks/${chunk.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          text: trimmedText,
+        }),
+      })
+      if (!res.ok) {
+        const errorData = await res.json()
+        throw new Error(errorData.detail || 'Failed to save text')
+      }
+      const updatedChunk = await res.json()
+
+      // Update the chunk in local state
+      setChunks((prev) =>
+        prev.map((c) => (c.id === updatedChunk.id ? updatedChunk : c))
+      )
+
+      setEditingTextChunkId(null)
+      setChunkText('')
+      setStatus('Text saved')
+    } catch (err) {
+      setError(err.message)
+    }
+  }
+
+  const handleToggleBookmark = async (chunk) => {
+    if (!chunk.id) return
+    const newBookmarkState = chunk.is_bookmarked ? 0 : 1
+    try {
+      const res = await fetch(`${API_BASE}/chunks/${chunk.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          is_bookmarked: newBookmarkState,
+        }),
+      })
+      if (!res.ok) throw new Error('Failed to toggle bookmark')
+      const updatedChunk = await res.json()
+
+      // Update the chunk in local state
+      setChunks((prev) =>
+        prev.map((c) => (c.id === updatedChunk.id ? updatedChunk : c))
+      )
+    } catch (err) {
+      setError(err.message)
+    }
+  }
+
+  const loadSessions = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/sessions`)
+      if (!res.ok) throw new Error('Failed to load sessions')
+      const data = await res.json()
+      setSessions(data)
+    } catch (err) {
+      setError(err.message)
+    }
+  }
+
+  const loadSessionDetails = async (id) => {
+    setStatus('Loading session...')
+    setError('')
+    try {
+      const res = await fetch(`${API_BASE}/sessions/${id}`)
+      if (!res.ok) throw new Error('Session not found')
+      const data = await res.json()
+      setSessionDetails(data.session)
+      setChunks(data.chunks || [])
+      setSessionId(id)
+      setIsEditingSession(false)
+      setEditTitle('')
+      setEditYoutubeUrl('')
+      resetChunkViews()
+      setStatus('Ready')
+    } catch (err) {
+      setError(err.message)
+    }
+  }
+
+  const handleCreateSession = async (event) => {
+    event.preventDefault()
+    setIsCreating(true)
+    setError('')
+    setStatus('Creating session...')
+    try {
+      const res = await fetch(`${API_BASE}/sessions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: title || null,
+          youtube_url: youtubeUrl || null,
+          notes: notes || null,
+        }),
+      })
+      if (!res.ok) throw new Error('Failed to create session')
+      const data = await res.json()
+      setSessionId(data.id)
+      setSessionDetails(data)
+      setChunks([])
+      setIsEditingSession(false)
+      setEditTitle('')
+      setEditYoutubeUrl('')
+      resetChunkViews()
+      setStatus('Session created')
+      await loadSessions()
+      // Collapse the create form and clear inputs
+      setIsCreatingNew(false)
+      setTitle('')
+      setYoutubeUrl('')
+      setNotes('')
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setIsCreating(false)
+    }
+  }
+
+  const handleUpload = async (event) => {
+    event.preventDefault()
+    if (!sessionId) {
+      setError('Create or select a session first.')
+      return
+    }
+    if (!file) {
+      setError('Choose a media file to upload.')
+      return
+    }
+    setIsUploading(true)
+    setError('')
+    setStatus('Uploading media...')
+    try {
+      const form = new FormData()
+      form.append('file', file)
+      const res = await fetch(`${API_BASE}/sessions/${sessionId}/media`, {
+        method: 'POST',
+        body: form,
+      })
+      if (!res.ok) throw new Error('Upload failed')
+      await loadSessionDetails(sessionId)
+      setStatus('Media uploaded')
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setIsUploading(false)
+    }
+  }
+
+  const handleProcess = async () => {
+    if (!sessionId) {
+      setError('Create or select a session first.')
+      return
+    }
+    setIsProcessing(true)
+    setError('')
+    setStatus('Processing (transcribe + chunk)...')
+    try {
+      const res = await fetch(`${API_BASE}/sessions/${sessionId}/process`, {
+        method: 'POST',
+      })
+      if (!res.ok) throw new Error('Process failed')
+      const data = await res.json()
+      setChunks(data.chunks || [])
+      resetChunkViews()
+      setStatus('Chunks ready')
+      await loadSessionDetails(sessionId)
+      await loadSessions()
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setIsProcessing(false)
+    }
+  }
+
+  const handleSearch = async () => {
+    if (!sessionId) return
+
+    const trimmed = searchQuery.trim()
+    const startTimeInput = startTime.trim()
+    const endTimeInput = endTime.trim()
+
+    // If no filters provided, reset to all chunks
+    if (!trimmed && !startTimeInput && !endTimeInput && !bookmarkedOnly) {
+      setSearchQuery('')
+      setStartTime('')
+      setEndTime('')
+      setBookmarkedOnly(false)
+      setIsSearching(false)
+      setLastQuery('')
+      setLastTimeRange('')
+      setTimeRangeError('')
+      await loadSessionDetails(sessionId)
+      setStatus('Search cleared')
+      return
+    }
+
+    // Parse time inputs
+    const startMs = startTimeInput ? parseTime(startTimeInput) : null
+    const endMs = endTimeInput ? parseTime(endTimeInput) : null
+
+    // Validate time range
+    if (startTimeInput && startMs === null) {
+      setTimeRangeError('Invalid start time format (use MM:SS)')
+      return
+    }
+    if (endTimeInput && endMs === null) {
+      setTimeRangeError('Invalid end time format (use MM:SS)')
+      return
+    }
+    if (startMs !== null && endMs !== null && startMs >= endMs) {
+      setTimeRangeError('End time must be after start time')
+      return
+    }
+
+    // Clear any previous errors
+    setTimeRangeError('')
+    setStatus('Searching...')
+    setError('')
+
+    try {
+      const res = await fetch(`${API_BASE}/sessions/${sessionId}/search`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          query: trimmed,
+          limit: 50,
+          start_time_ms: startMs,
+          end_time_ms: endMs,
+          is_bookmarked: bookmarkedOnly || null,
+        }),
+      })
+      if (!res.ok) throw new Error('Search failed')
+      const data = await res.json()
+      setChunks(data.results || [])
+      setIsSearching(true)
+      setLastQuery(trimmed)
+
+      // Track time range for display
+      if (startTimeInput || endTimeInput) {
+        setLastTimeRange(`${startTimeInput || '0:00'}-${endTimeInput || '∞'}`)
+      } else {
+        setLastTimeRange('')
+      }
+
+      resetChunkViews()
+      setStatus(`Search returned ${data.results?.length ?? 0} results`)
+    } catch (err) {
+      setError(err.message)
+    }
+  }
+
+  const handleClearSearch = async () => {
+    setSearchQuery('')
+    setStartTime('')
+    setEndTime('')
+    setBookmarkedOnly(false)
+    setTimeRangeError('')
+    setIsSearching(false)
+    setLastQuery('')
+    setLastTimeRange('')
+    resetChunkViews()
+    if (sessionId) {
+      await loadSessionDetails(sessionId)
+    }
+    setStatus('Search cleared')
+  }
+
+  const handleEditSession = () => {
+    if (!sessionDetails) return
+    setEditTitle(sessionDetails.title || '')
+    setEditYoutubeUrl(sessionDetails.youtube_url || '')
+    setEditNotes(sessionDetails.notes || '')
+    setIsEditingSession(true)
+  }
+
+  const handleCancelEdit = () => {
+    setIsEditingSession(false)
+    setEditTitle('')
+    setEditYoutubeUrl('')
+    setEditNotes('')
+  }
+
+  const handleSaveSession = async () => {
+    if (!sessionId) return
+    setStatus('Saving session...')
+    setError('')
+    try {
+      const res = await fetch(`${API_BASE}/sessions/${sessionId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: editTitle.trim() || null,
+          youtube_url: editYoutubeUrl.trim() || null,
+          notes: editNotes.trim() || null,
+        }),
+      })
+      if (!res.ok) throw new Error('Failed to update session')
+      const data = await res.json()
+      setSessionDetails(data)
+      setIsEditingSession(false)
+      await loadSessions()
+      setStatus('Session updated')
+    } catch (err) {
+      setError(err.message)
+    }
+  }
+
+  const handleDeleteSession = async () => {
+    if (!sessionId) return
+    const confirmed = window.confirm(
+      'Delete this session? This will remove all chunks and media for it.'
+    )
+    if (!confirmed) return
+    setStatus('Deleting session...')
+    setError('')
+    try {
+      const res = await fetch(`${API_BASE}/sessions/${sessionId}`, {
+        method: 'DELETE',
+      })
+      if (!res.ok) throw new Error('Failed to delete session')
+      setSessionId('')
+      setSessionDetails(null)
+      setChunks([])
+      setSearchQuery('')
+      setIsSearching(false)
+      setLastQuery('')
+      resetChunkViews()
+      setIsEditingSession(false)
+      await loadSessions()
+      setStatus('Session deleted')
+    } catch (err) {
+      setError(err.message)
+    }
+  }
+
+  const handleCloseSession = () => {
+    try {
+      // CRITICAL: Destroy YouTube player FIRST before clearing any state
+      // This prevents the player from trying to interact with removed DOM elements
+      if (youtubePlayer && youtubePlayer.destroy) {
+        try {
+          youtubePlayer.destroy()
+        } catch (err) {
+          console.error('Error destroying YouTube player:', err)
+        }
+      }
+      setYoutubePlayer(null)
+
+      // Clear all editing states
+      setIsEditingSession(false)
+      setIsEditingSessionNotes(false)
+      setSessionNotesText('')
+      setEditTitle('')
+      setEditYoutubeUrl('')
+      setEditNotes('')
+
+      // Clear search states
+      setSearchQuery('')
+      setIsSearching(false)
+      setLastQuery('')
+      setLastTimeRange('')
+      setBookmarkedOnly(false)
+
+      // Clear file upload
+      setFile(null)
+
+      // Clear chunks and reset views
+      setChunks([])
+      resetChunkViews()
+
+      // Finally clear session data
+      setSessionId('')
+      setSessionDetails(null)
+    } catch (err) {
+      console.error('Error in handleCloseSession:', err)
+      // Force a hard reset if something goes wrong
+      window.location.reload()
+    }
+  }
+
+  const handleEditSessionNotes = () => {
+    setIsEditingSessionNotes(true)
+    setSessionNotesText(sessionDetails?.notes || '')
+  }
+
+  const handleCancelSessionNotes = () => {
+    setIsEditingSessionNotes(false)
+    setSessionNotesText('')
+  }
+
+  const handleSaveSessionNotes = async () => {
+    if (!sessionId) return
+    try {
+      const res = await fetch(`${API_BASE}/sessions/${sessionId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          notes: sessionNotesText.trim() || null,
+        }),
+      })
+      if (!res.ok) throw new Error('Failed to save notes')
+      const data = await res.json()
+      setSessionDetails(data)
+      setIsEditingSessionNotes(false)
+      setSessionNotesText('')
+      await loadSessions()
+      setStatus('Notes saved')
+    } catch (err) {
+      setError(err.message)
+    }
+  }
+
+  const totalPages = Math.max(1, Math.ceil(chunks.length / pageSize))
+  const pageStart = pageIndex * pageSize
+  const pageChunks = chunks.slice(pageStart, pageStart + pageSize)
+
+  return (
+    <div className="page">
+      <header>
+        <div>
+          <h1>RECALL.GG</h1>
+          <p className="eyebrow">Scrim reviews made efficient</p>
+        </div>
+        {SHOW_STATUS_BOX && (
+          <div className="status">
+            <span className="badge">{status || 'Idle'}</span>
+            {error && <span className="badge danger">{error}</span>}
+          </div>
+        )}
+      </header>
+
+      <section className="main-layout">
+        <div className="left-column">
+          <div className="sidebar-tabs">
+            <button
+              className={sidebarTab === 'sessions' ? 'active' : ''}
+              onClick={() => setSidebarTab('sessions')}
+            >
+              Sessions
+            </button>
+            <button
+              className={sidebarTab === 'explore' ? 'active' : ''}
+              onClick={() => setSidebarTab('explore')}
+            >
+              Explore
+            </button>
+          </div>
+
+          <div className="sidebar-content">
+          {sidebarTab === 'sessions' && (
+          <div className="sessions-tab">
+          <div className="left-scroll">
+            <section className="panel">
+              <div className="panel-header">
+                <div>
+                  <p className="eyebrow">Sessions</p>
+                  <h2>Your sessions</h2>
+                </div>
+                <button className="ghost" onClick={loadSessions}>
+                  Refresh
+                </button>
+              </div>
+              <div className="session-list">
+                {/* New session button/form */}
+                {!isCreatingNew ? (
+                  <button
+                    className="create-session-btn"
+                    onClick={() => setIsCreatingNew(true)}
+                  >
+                    <span className="btn-icon">+</span>
+                    <span>New Session</span>
+                  </button>
+                ) : (
+                  <div className="create-session-inline">
+                    <form className="stack" onSubmit={handleCreateSession}>
+                      <label className="field">
+                        <span>Title</span>
+                        <input
+                          type="text"
+                          placeholder="Scrim vs Team Blue"
+                          value={title}
+                          onChange={(e) => setTitle(e.target.value)}
+                          autoFocus
+                        />
+                      </label>
+                      <label className="field">
+                        <span>YouTube URL</span>
+                        <input
+                          type="url"
+                          placeholder="https://youtube.com/watch?v=..."
+                          value={youtubeUrl}
+                          onChange={(e) => setYoutubeUrl(e.target.value)}
+                        />
+                      </label>
+                      <label className="field">
+                        <span>
+                          Notes <span className="hint">(optional, {150 - notes.length} chars left)</span>
+                        </span>
+                        <textarea
+                          placeholder="e.g., 'Scrim vs Team Red - Baron control focus'"
+                          value={notes}
+                          onChange={(e) => setNotes(e.target.value)}
+                          maxLength={150}
+                          rows={2}
+                        />
+                      </label>
+                      <div className="actions">
+                        <button type="submit" disabled={isCreating}>
+                          {isCreating ? 'Creating...' : 'Create'}
+                        </button>
+                        <button
+                          type="button"
+                          className="ghost"
+                          onClick={() => {
+                            setIsCreatingNew(false)
+                            setTitle('')
+                            setYoutubeUrl('')
+                            setNotes('')
+                          }}
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                )}
+
+                {/* Empty state */}
+                {sessions.length === 0 && !isCreatingNew && (
+                  <div className="empty-state">
+                    <p className="empty-state-icon">📹</p>
+                    <p className="hint">No sessions yet. Create your first session to get started.</p>
+                  </div>
+                )}
+
+                {/* Session cards */}
+                {sessions.map((session) => (
+                  <button
+                    key={session.id}
+                    className={`session-card ${
+                      session.id === sessionId ? 'active' : ''
+                    }`}
+                    onClick={() => loadSessionDetails(session.id)}
+                  >
+                    <div className="session-card-header">
+                      <div className="session-title-row">
+                        <strong className="session-name">
+                          {session.title || 'Untitled session'}
+                        </strong>
+                        <span className={`status-badge ${session.status}`}>
+                          {getStatusDisplay(session.status)}
+                        </span>
+                      </div>
+                      <div className="session-meta-row">
+                        <span className="session-time">{formatRelativeTime(session.created_at)}</span>
+                        {session.processing_duration_seconds != null && (
+                          <span className="duration-chip">
+                            {formatDuration(session.processing_duration_seconds)}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="session-card-details">
+                      {session.youtube_url && (
+                        <p className="hint" title={session.youtube_url}>
+                          🎥 {shortenUrl(session.youtube_url)}
+                        </p>
+                      )}
+                      {session.media_path && (
+                        <p className="hint" title={session.media_path}>
+                          📹 {basename(session.media_path)}
+                        </p>
+                      )}
+                      {session.notes && (
+                        <p className="session-notes-preview">
+                          {session.notes.length > 60
+                            ? session.notes.slice(0, 60) + '...'
+                            : session.notes}
+                        </p>
+                      )}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </section>
+
+          </div>
+
+          <div className="left-footer">
+            {sessionDetails && (
+              <div className="active-session-panel">
+                <div className="active-session-header">
+                  <div className="header-title-section">
+                    <p className="eyebrow">Active Session</p>
+                    <div className="title-with-status">
+                      <h2 className="active-session-title">
+                        {sessionDetails.title || 'Untitled session'}
+                      </h2>
+                      <span className={`status-badge ${sessionDetails.status}`}>
+                        {getStatusDisplay(sessionDetails.status)}
+                      </span>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    className="close-btn"
+                    onClick={handleCloseSession}
+                    title="Close session"
+                  >
+                    ×
+                  </button>
+                </div>
+
+                {isEditingSession ? (
+                  <div className="stack">
+                    <label className="field">
+                      <span>Title</span>
+                      <input
+                        type="text"
+                        value={editTitle}
+                        onChange={(e) => setEditTitle(e.target.value)}
+                      />
+                    </label>
+                    <label className="field">
+                      <span>YouTube URL</span>
+                      <input
+                        type="url"
+                        value={editYoutubeUrl}
+                        onChange={(e) => setEditYoutubeUrl(e.target.value)}
+                      />
+                    </label>
+                    <label className="field">
+                      <span>
+                        Notes <span className="hint">({150 - editNotes.length} chars left)</span>
+                      </span>
+                      <textarea
+                        value={editNotes}
+                        onChange={(e) => setEditNotes(e.target.value)}
+                        maxLength={150}
+                        rows={2}
+                      />
+                    </label>
+                    <div className="actions">
+                      <button type="button" className="ghost" onClick={handleSaveSession}>
+                        Save
+                      </button>
+                      <button
+                        type="button"
+                        className="ghost"
+                        onClick={handleCancelEdit}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="active-session-metadata">
+                    <div className="metadata-info-row">
+                      <span className="metadata-item">
+                        {formatRelativeTime(sessionDetails.created_at)}
+                      </span>
+                      {sessionDetails.processing_duration_seconds != null && (
+                        <>
+                          <span className="metadata-separator">•</span>
+                          <span className="metadata-item">
+                            {formatDuration(sessionDetails.processing_duration_seconds)}
+                          </span>
+                        </>
+                      )}
+                      {sessionDetails.youtube_url && (
+                        <>
+                          <span className="metadata-separator">•</span>
+                          <a
+                            href={sessionDetails.youtube_url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="metadata-link"
+                            title="Open YouTube video"
+                          >
+                            🎥 YouTube
+                          </a>
+                        </>
+                      )}
+                      {sessionDetails.media_path && (
+                        <>
+                          <span className="metadata-separator">•</span>
+                          <span className="metadata-item" title={sessionDetails.media_path}>
+                            📹 {basename(sessionDetails.media_path)}
+                          </span>
+                        </>
+                      )}
+                    </div>
+
+                    {isEditingSessionNotes ? (
+                      <div className="session-notes-edit">
+                        <label className="field">
+                          <span>Notes ({150 - sessionNotesText.length} chars left)</span>
+                          <textarea
+                            value={sessionNotesText}
+                            onChange={(e) => setSessionNotesText(e.target.value)}
+                            onBlur={handleSaveSessionNotes}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' && !e.shiftKey) {
+                                e.preventDefault()
+                                handleSaveSessionNotes()
+                              } else if (e.key === 'Escape') {
+                                handleCancelSessionNotes()
+                              }
+                            }}
+                            maxLength={150}
+                            rows={3}
+                            placeholder="Add session notes..."
+                            autoFocus
+                          />
+                        </label>
+                      </div>
+                    ) : sessionDetails.notes ? (
+                      <div className="metadata-notes editable" onClick={handleEditSessionNotes} title="Click to edit">
+                        <span className="notes-text">{sessionDetails.notes}</span>
+                      </div>
+                    ) : (
+                      <div className="metadata-notes-empty editable" onClick={handleEditSessionNotes} title="Click to add notes">
+                        <span className="notes-text-placeholder">Click to add notes...</span>
+                      </div>
+                    )}
+
+                    {/* Upload controls */}
+                    <div className="session-upload-controls">
+                      {!sessionDetails.media_path && (
+                        <div className="upload-prompt">
+                          <p className="hint">📤 Upload a video or audio file to get started</p>
+                        </div>
+                      )}
+                      <form className="upload-form" onSubmit={handleUpload}>
+                        <label className="field file">
+                          <span>{sessionDetails.media_path ? 'Replace media' : 'Choose file'}</span>
+                          <input
+                            type="file"
+                            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+                          />
+                        </label>
+                        <div className="upload-actions">
+                          <button type="submit" disabled={isUploading || !file}>
+                            {isUploading ? 'Uploading...' : 'Upload'}
+                          </button>
+                          {sessionDetails.media_path && (
+                            <button
+                              type="button"
+                              className="ghost"
+                              onClick={handleProcess}
+                              disabled={isProcessing}
+                            >
+                              {isProcessing
+                                ? `Processing... ${formatTime(elapsedSeconds * 1000)}`
+                                : 'Process'}
+                            </button>
+                          )}
+                        </div>
+                      </form>
+                    </div>
+
+                    <div className="actions">
+                      <button
+                        type="button"
+                        className="ghost"
+                        onClick={handleEditSession}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        className="ghost"
+                        onClick={handleDeleteSession}
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+          </div>
+          )}
+
+          {sidebarTab === 'explore' && (
+          <div className="search-tab" ref={chunkListRef}>
+            <div className="search-controls">
+              <input
+                type="text"
+                className="search-input"
+                placeholder={'Search: reset / baron / "we should"'}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && canSearch) {
+                    handleSearch()
+                  }
+                }}
+                disabled={!canSearch}
+              />
+              <div className="search-filters-row">
+                <div className="search-filters">
+                  <input
+                    type="text"
+                    className="time-input"
+                    placeholder="Start"
+                    value={startTime}
+                    onChange={(e) => {
+                      setStartTime(e.target.value)
+                      setTimeRangeError('')
+                    }}
+                    disabled={!canSearch}
+                  />
+                  <span className="time-separator">to</span>
+                  <input
+                    type="text"
+                    className="time-input"
+                    placeholder="End"
+                    value={endTime}
+                    onChange={(e) => {
+                      setEndTime(e.target.value)
+                      setTimeRangeError('')
+                    }}
+                    disabled={!canSearch}
+                  />
+                  <button
+                    type="button"
+                    className="action-btn primary"
+                    onClick={handleSearch}
+                    disabled={!canSearch}
+                  >
+                    Go
+                  </button>
+                  <button
+                    type="button"
+                    className="action-btn"
+                    onClick={handleClearSearch}
+                    disabled={!canSearch}
+                  >
+                    Clear
+                  </button>
+                </div>
+                {sessionId && (
+                  <>
+                    <label className="bookmark-filter-label">
+                      <input
+                        type="checkbox"
+                        checked={bookmarkedOnly}
+                        onChange={(e) => setBookmarkedOnly(e.target.checked)}
+                        disabled={!canSearch}
+                      />
+                      <span>Show bookmarked only</span>
+                    </label>
+                    <span className="search-status">
+                      {isSearching ? (
+                        <>
+                          Results: {chunks.length}
+                          {lastQuery && ` (${lastQuery})`}
+                          {lastTimeRange && ` (${lastTimeRange})`}
+                        </>
+                      ) : (
+                        `${chunks.length} chunks`
+                      )}
+                    </span>
+                  </>
+                )}
+              </div>
+              {timeRangeError && (
+                <span className="hint danger">{timeRangeError}</span>
+              )}
+              {!canSearch && (
+                <span className="hint">Select a session to search</span>
+              )}
+            </div>
+
+            {!sessionId && (
+              <p className="hint">Select a session to view chunks.</p>
+            )}
+            {sessionId && chunks.length === 0 && (
+              <p className="hint">No chunks found. Check the filters or process the uploaded file.</p>
+            )}
+            {sessionId && chunks.length > 0 && (
+              <div className="pagination">
+                <div className="actions">
+                  {sessionDetails?.youtube_url && (
+                    <label className="toggle-label-inline">
+                      <input
+                        type="checkbox"
+                        checked={autoScrollEnabled}
+                        onChange={(e) => setAutoScrollEnabled(e.target.checked)}
+                      />
+                      <span>Auto-scroll</span>
+                    </label>
+                  )}
+                  <button
+                    type="button"
+                    className="action-btn"
+                    onClick={() => setPageIndex((prev) => Math.max(0, prev - 1))}
+                    disabled={pageIndex === 0}
+                  >
+                    Prev
+                  </button>
+                  <button
+                    type="button"
+                    className="action-btn"
+                    onClick={() =>
+                      setPageIndex((prev) => Math.min(totalPages - 1, prev + 1))
+                    }
+                    disabled={pageIndex >= totalPages - 1}
+                  >
+                    Next
+                  </button>
+                </div>
+                <span className="hint">
+                  Page {pageIndex + 1} / {totalPages}
+                </span>
+              </div>
+            )}
+            <div className="chunk-list">
+              {pageChunks.map((chunk) => {
+                const chunkKey =
+                  chunk.id ??
+                  `${chunk.start_ms}-${chunk.end_ms}-${chunk.text?.length ?? 0}`
+                const isExpanded = expandedChunkIds.has(chunkKey)
+                const previewText = getPreviewText(chunk.text || '')
+                const youtubeLink = buildYoutubeUrlWithTimestamp(
+                  sessionDetails?.youtube_url,
+                  chunk.start_ms
+                )
+                return (
+                  <div
+                    key={chunkKey}
+                    data-chunk-key={chunkKey}
+                    className={`chunk ${chunkKey === activeChunkId ? 'active' : ''}`}
+                  >
+                    <div className="chunk-header">
+                      {sessionDetails?.youtube_url ? (
+                        <button
+                          type="button"
+                          className="chunk-times chunk-times-link"
+                          onClick={() => handleTimestampClick(chunk)}
+                        >
+                          <span>{formatTime(chunk.start_ms)}</span>
+                          <span>→</span>
+                          <span>{formatTime(chunk.end_ms)}</span>
+                        </button>
+                      ) : (
+                        <div className="chunk-times">
+                          <span>{formatTime(chunk.start_ms)}</span>
+                          <span>→</span>
+                          <span>{formatTime(chunk.end_ms)}</span>
+                        </div>
+                      )}
+                      <div className="chunk-header-right">
+                        {/* Copy button - always rendered, visibility controlled by CSS */}
+                        {youtubeLink && (
+                          <button
+                            type="button"
+                            className={`copy-btn ${isExpanded ? 'always-visible' : 'hover-visible'}`}
+                            onClick={() => handleCopyTimestamp(chunkKey, youtubeLink)}
+                            title="Copy timestamp URL"
+                          >
+                            {copiedChunkId === chunkKey ? '✓' : '📋'}
+                          </button>
+                        )}
+                        {/* Note button - always visible when expanded or has note, hover-visible when collapsed without note */}
+                        <button
+                          type="button"
+                          className={`note-btn ${isExpanded || chunk.notes ? 'always-visible' : 'hover-visible'}`}
+                          onClick={() => {
+                            if (!isExpanded) {
+                              // Collapsed: expand first
+                              toggleChunkExpanded(chunkKey)
+                            } else {
+                              // Expanded: open editor
+                              handleEditNote(chunk)
+                            }
+                          }}
+                          title={
+                            !isExpanded && chunk.notes
+                              ? 'Has note - click to expand'
+                              : !isExpanded
+                              ? 'Expand to add note'
+                              : chunk.notes
+                              ? 'Edit note'
+                              : 'Add note'
+                          }
+                        >
+                          {chunk.notes ? '📝' : '✏️'}
+                        </button>
+                        {/* Star button - always visible when expanded or bookmarked */}
+                        <button
+                          type="button"
+                          className={`copy-btn ${isExpanded || chunk.is_bookmarked ? 'always-visible' : 'hover-visible'}`}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleToggleBookmark(chunk)
+                          }}
+                          title={chunk.is_bookmarked ? 'Remove bookmark' : 'Add bookmark'}
+                        >
+                          {chunk.is_bookmarked ? '⭐' : '☆'}
+                        </button>
+                        {/* Expand/collapse button */}
+                        <button
+                          type="button"
+                          className={`${isExpanded ? 'collapse-btn always-visible' : 'expand-indicator hover-visible'}`}
+                          onClick={() => toggleChunkExpanded(chunkKey)}
+                          title={isExpanded ? 'Click to collapse' : 'Click to expand'}
+                        >
+                          {isExpanded ? '▲' : '▼'}
+                        </button>
+                      </div>
+                    </div>
+                    {editingTextChunkId === chunkKey ? (
+                      <div className="chunk-text-edit">
+                        <label className="field">
+                          <span>Text ({1000 - chunkText.length} chars left)</span>
+                          <textarea
+                            value={chunkText}
+                            onChange={(e) => setChunkText(e.target.value)}
+                            onBlur={() => handleSaveText(chunk)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' && !e.shiftKey) {
+                                e.preventDefault()
+                                handleSaveText(chunk)
+                              } else if (e.key === 'Escape') {
+                                handleCancelText()
+                              }
+                            }}
+                            maxLength={1000}
+                            rows={5}
+                            placeholder="Chunk text..."
+                            autoFocus
+                          />
+                        </label>
+                      </div>
+                    ) : (
+                      <p
+                        className={`chunk-text ${isExpanded && editingNoteChunkId !== chunkKey ? 'editable' : ''}`}
+                        onClick={() => {
+                          if (isExpanded && editingNoteChunkId !== chunkKey) {
+                            handleEditText(chunk)
+                          } else if (!isExpanded) {
+                            toggleChunkExpanded(chunkKey)
+                          }
+                        }}
+                        title={
+                          isExpanded && editingNoteChunkId !== chunkKey
+                            ? 'Click to edit'
+                            : !isExpanded
+                            ? 'Click to expand'
+                            : ''
+                        }
+                      >
+                        {isExpanded ? chunk.text : previewText}
+                      </p>
+                    )}
+                    {isExpanded && editingNoteChunkId === chunkKey && (
+                      <div className="chunk-note-edit">
+                        <label className="field">
+                          <span>Notes ({100 - noteText.length} chars left)</span>
+                          <textarea
+                            value={noteText}
+                            onChange={(e) => setNoteText(e.target.value)}
+                            onBlur={() => handleSaveNote(chunk)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault()
+                                handleSaveNote(chunk)
+                              } else if (e.key === 'Escape') {
+                                handleCancelNote()
+                              }
+                            }}
+                            maxLength={100}
+                            rows={3}
+                            placeholder="Add your notes here..."
+                            autoFocus
+                          />
+                        </label>
+                      </div>
+                    )}
+                    {isExpanded && editingNoteChunkId !== chunkKey && chunk.notes && (
+                      <div className="chunk-note-display">
+                        <p className="note-label">Notes:</p>
+                        <p
+                          className="note-text"
+                          onClick={() => handleEditNote(chunk)}
+                          title="Click to edit"
+                        >
+                          {chunk.notes}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+          )}
+          </div>
+        </div>
+
+        <div className="main-content">
+          {sessionDetails?.youtube_url ? (
+            <div className="youtube-player-container">
+              <div id="youtube-player"></div>
+            </div>
+          ) : (
+            <div className="no-player-message">
+              <p className="hint">
+                {sessionId
+                  ? 'This session has no YouTube URL. Add one in the Sessions tab to see the embedded player.'
+                  : 'Select a session with a YouTube URL to view the player.'}
+              </p>
+            </div>
+          )}
+        </div>
+      </section>
+    </div>
+  )
+}
+
+export default App

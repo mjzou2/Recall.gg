@@ -1,0 +1,464 @@
+.sessionsTab {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.leftScroll {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 0.25rem;
+  min-width: 0;
+}
+
+.leftFooter {
+  flex: 0 0 auto;
+  margin-top: 12px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+/* Session List */
+.sessionList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.createSessionBtn {
+  text-align: left;
+  border: 2px dashed var(--border-medium);
+  border-radius: 10px;
+  padding: 1rem 1.125rem;
+  background: transparent;
+  color: var(--text-secondary);
+  box-shadow: none;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  font-weight: 600;
+  font-size: 0.9375rem;
+}
+
+.createSessionBtn:hover {
+  border-color: var(--purple-primary);
+  background: rgba(124, 58, 237, 0.04);
+  color: var(--purple-primary);
+  transform: none;
+}
+
+.btnIcon {
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+.createSessionInline {
+  border: 2px solid var(--purple-primary);
+  border-radius: 10px;
+  padding: 1.25rem;
+  background: rgba(124, 58, 237, 0.04);
+  box-shadow: 0 4px 16px rgba(124, 58, 237, 0.2);
+}
+
+.emptyState {
+  text-align: center;
+  padding: 2rem 1rem;
+}
+
+.emptyStateIcon {
+  font-size: 3rem;
+  margin-bottom: 0.5rem;
+  opacity: 0.3;
+}
+
+/* Session Cards */
+.sessionCard {
+  text-align: left;
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  padding: 1rem 1.125rem;
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  box-shadow: none;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  transition: all 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+}
+
+.sessionCard:hover {
+  border-color: var(--border-medium);
+  background: var(--bg-hover);
+}
+
+.sessionCard.active {
+  border-color: var(--purple-primary);
+  background: rgba(124, 58, 237, 0.08);
+  box-shadow: 0 0 0 1px var(--purple-primary), 0 4px 16px rgba(124, 58, 237, 0.2);
+}
+
+.sessionCardHeader {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.sessionTitleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.625rem;
+}
+
+.sessionName {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  flex: 1;
+  min-width: 0;
+}
+
+.sessionMetaRow {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  flex-wrap: wrap;
+}
+
+.sessionTime {
+  font-size: 0.8125rem;
+  color: var(--text-tertiary);
+  font-weight: 400;
+}
+
+.sessionCardDetails {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.sessionNotesPreview {
+  font-size: 0.8125rem;
+  color: var(--text-tertiary);
+  font-style: italic;
+  margin-top: 0.375rem;
+  line-height: 1.5;
+}
+
+/* Status Badge */
+.statusBadge {
+  padding: 0.25rem 0.625rem;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  display: inline-flex;
+  align-items: center;
+}
+
+.statusBadge.created {
+  background: rgba(113, 113, 122, 0.15);
+  color: #A1A1AA;
+}
+
+.statusBadge.uploaded {
+  background: rgba(59, 130, 246, 0.15);
+  color: #93C5FD;
+}
+
+.statusBadge.processing {
+  background: rgba(234, 179, 8, 0.15);
+  color: #FDE047;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.statusBadge.ready {
+  background: rgba(34, 197, 94, 0.15);
+  color: #86EFAC;
+}
+
+.statusBadge.failed {
+  background: rgba(239, 68, 68, 0.15);
+  color: #FCA5A5;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+.durationChip {
+  padding: 0.25rem 0.625rem;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: rgba(124, 58, 237, 0.12);
+  color: #A78BFA;
+  border: 1px solid rgba(124, 58, 237, 0.2);
+}
+
+/* Active Session Panel */
+.activeSessionPanel {
+  background: var(--bg-base);
+  border-top: 2px solid var(--purple-primary);
+  padding: 1rem 1.25rem;
+  margin-top: 1rem;
+}
+
+.activeSessionHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 0.875rem;
+}
+
+.headerTitleSection {
+  flex: 1;
+  min-width: 0;
+}
+
+.titleWithStatus {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  margin-top: 0.25rem;
+  flex-wrap: wrap;
+}
+
+.activeSessionTitle {
+  font-size: 1.125rem;
+  margin: 0;
+  color: var(--text-primary);
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+.closeBtn {
+  background: transparent;
+  border: 1px solid var(--border-medium);
+  color: var(--text-secondary);
+  padding: 0.25rem 0.5rem;
+  border-radius: 6px;
+  font-size: 1.25rem;
+  font-weight: 400;
+  cursor: pointer;
+  transition: opacity 0.2s ease, background 0.2s ease, border-color 0.2s ease;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  opacity: 0.6;
+  box-shadow: none;
+}
+
+.closeBtn:hover {
+  opacity: 1;
+  background: var(--bg-hover);
+  border-color: var(--purple-primary);
+  transform: none;
+}
+
+.activeSessionMetadata {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.metadataInfoRow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+}
+
+.metadataSeparator {
+  color: var(--text-tertiary);
+  opacity: 0.5;
+  user-select: none;
+}
+
+.metadataItem {
+  font-size: 0.8125rem;
+  color: var(--text-tertiary);
+  white-space: nowrap;
+}
+
+.metadataLink {
+  font-size: 0.8125rem;
+  color: var(--purple-primary);
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.metadataLink:hover {
+  color: #A78BFA;
+  text-decoration: underline;
+}
+
+.metadataNotes {
+  padding: 0.625rem;
+  background: rgba(124, 58, 237, 0.04);
+  border-radius: 6px;
+  border-left: 2px solid var(--purple-primary);
+  transition: background 0.2s ease;
+}
+
+.metadataNotes.editable {
+  cursor: pointer;
+}
+
+.metadataNotes.editable:hover {
+  background: rgba(124, 58, 237, 0.08);
+}
+
+.notesText {
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+  font-style: italic;
+  line-height: 1.5;
+}
+
+.metadataNotesEmpty {
+  padding: 0.625rem;
+  background: rgba(124, 58, 237, 0.04);
+  border-radius: 6px;
+  border-left: 2px solid transparent;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.metadataNotesEmpty:hover {
+  background: rgba(124, 58, 237, 0.08);
+  border-left-color: var(--purple-primary);
+}
+
+.notesTextPlaceholder {
+  font-size: 0.8125rem;
+  color: var(--text-tertiary);
+  font-style: italic;
+  line-height: 1.5;
+  opacity: 0.6;
+}
+
+.sessionNotesEdit {
+  width: 100%;
+}
+
+.sessionNotesEdit .field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 0;
+}
+
+.sessionNotesEdit .field span {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--text-tertiary);
+}
+
+.sessionNotesEdit textarea {
+  width: 100%;
+  box-sizing: border-box;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-medium);
+  border-radius: 6px;
+  color: var(--text-primary);
+  padding: 0.5rem;
+  font-family: inherit;
+  font-size: 0.875rem;
+  resize: vertical;
+  transition: border-color 0.2s ease;
+}
+
+.sessionNotesEdit textarea:focus {
+  outline: none;
+  border-color: var(--purple-primary);
+  background: var(--bg-base);
+}
+
+/* Upload Controls */
+.sessionUploadControls {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.uploadPrompt {
+  margin-bottom: 0.625rem;
+  padding: 0.75rem;
+  background: rgba(124, 58, 237, 0.04);
+  border-radius: 6px;
+  border-left: 2px solid var(--purple-primary);
+}
+
+.uploadPrompt .hint {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+}
+
+.uploadForm {
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+}
+
+.uploadForm .field {
+  margin-bottom: 0;
+}
+
+.uploadForm .field span {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--text-tertiary);
+}
+
+.uploadForm .field input {
+  font-size: 0.8125rem;
+  padding: 0.5rem 0.625rem;
+}
+
+.uploadActions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.uploadActions button {
+  font-size: 0.8125rem;
+  padding: 0.5rem 0.875rem;
+}
+
+/* Action Buttons */
+.activeSessionPanel .actions button,
+.activeSessionPanel .uploadActions button {
+  font-size: 0.8125rem;
+  padding: 0.5rem 0.875rem;
+  min-width: 80px;
+  text-align: center;
+}
+
+.activeSessionPanel .actions {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border-subtle);
+}
