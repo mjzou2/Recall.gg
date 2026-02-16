@@ -15,9 +15,11 @@ import { PAGE_SIZE } from '../utils/api'
  * @param {string} props.activeChunkId - ID of currently active chunk
  * @param {boolean} props.autoScrollEnabled - Whether auto-scroll is enabled
  * @param {Function} props.setAutoScrollEnabled - Handler to toggle auto-scroll
+ * @param {number} props.pageIndex - Current page index
+ * @param {Function} props.setPageIndex - Handler to update page index
  * @param {Function} props.onSearch - Handler to search chunks
  * @param {Function} props.onUpdateChunk - Handler to update chunk
- * @param {Function} props.setStatus - Handler to set status message
+ * @param {Function} props.onTimestampClick - Handler for timestamp clicks
  */
 export const ExplorePanel = ({
   sessionId,
@@ -28,9 +30,11 @@ export const ExplorePanel = ({
   activeChunkId,
   autoScrollEnabled,
   setAutoScrollEnabled,
+  pageIndex,
+  setPageIndex,
   onSearch,
   onUpdateChunk,
-  setStatus,
+  onTimestampClick,
 }) => {
   // Search state
   const [searchQuery, setSearchQuery] = useState('')
@@ -41,9 +45,6 @@ export const ExplorePanel = ({
   const [isSearching, setIsSearching] = useState(false)
   const [lastQuery, setLastQuery] = useState('')
   const [lastTimeRange, setLastTimeRange] = useState('')
-
-  // Pagination state
-  const [pageIndex, setPageIndex] = useState(0)
 
   // Chunk interaction state
   const [expandedChunkIds, setExpandedChunkIds] = useState(new Set())
@@ -85,7 +86,6 @@ export const ExplorePanel = ({
       setExpandedChunkIds(new Set())
       // Load all chunks by calling search with no params
       await onSearch(sessionId, {})
-      setStatus('Search cleared')
       return
     }
 
@@ -151,7 +151,6 @@ export const ExplorePanel = ({
     if (sessionId) {
       await onSearch(sessionId, {})
     }
-    setStatus('Search cleared')
   }
 
   const toggleChunkExpanded = (chunkKey) => {
@@ -177,12 +176,11 @@ export const ExplorePanel = ({
     }
   }
 
-  const handleTimestampClick = (chunk, chunkKey) => {
-    if (youtubePlayer && youtubePlayer.seekTo) {
-      const seconds = Math.floor(chunk.start_ms / 1000)
-      youtubePlayer.seekTo(seconds, true)
+  const handleTimestampClickInternal = (chunk) => {
+    // Use the prop handler if available, otherwise fallback to opening in new tab
+    if (onTimestampClick) {
+      onTimestampClick(chunk)
     } else {
-      // Fallback to opening in new tab if player not available
       const youtubeLink = formatters.buildYoutubeUrlWithTimestamp(
         sessionDetails?.youtube_url,
         chunk.start_ms
@@ -209,7 +207,6 @@ export const ExplorePanel = ({
       await onUpdateChunk(chunk.id, { notes: noteText.trim() || null })
       setEditingNoteChunkId(null)
       setNoteText('')
-      setStatus('Note saved')
     } catch (err) {
       // Error is handled by parent
     }
@@ -229,14 +226,12 @@ export const ExplorePanel = ({
     if (!chunk.id) return
     const trimmedText = chunkText.trim()
     if (!trimmedText) {
-      setStatus('Text cannot be empty')
       return
     }
     try {
       await onUpdateChunk(chunk.id, { text: trimmedText })
       setEditingTextChunkId(null)
       setChunkText('')
-      setStatus('Text saved')
     } catch (err) {
       // Error is handled by parent
     }
@@ -412,7 +407,7 @@ export const ExplorePanel = ({
                   <button
                     type="button"
                     className={`${styles.chunkTimes} ${styles.chunkTimesLink}`}
-                    onClick={() => handleTimestampClick(chunk, chunkKey)}
+                    onClick={() => handleTimestampClickInternal(chunk)}
                   >
                     <span>{formatters.formatTime(chunk.start_ms)}</span>
                     <span>→</span>
