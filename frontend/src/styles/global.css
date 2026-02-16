@@ -54,6 +54,20 @@ body {
   align-items: stretch;
 }
 
+.main-content {
+  height: var(--pane-h);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
+  overflow: visible;
+  padding: 1rem;
+  box-sizing: border-box;
+}
+
 .left-column {
   display: flex;
   flex-direction: column;
@@ -62,6 +76,47 @@ body {
   min-width: 0;
   overflow: hidden;
   box-sizing: border-box;
+}
+
+.sidebar-tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1.25rem;
+  background: var(--bg-elevated);
+  padding: 0.375rem;
+  border-radius: 10px;
+  border: 1px solid var(--border-subtle);
+}
+
+.sidebar-tabs button {
+  flex: 1;
+  padding: 0.625rem 0.875rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  border-radius: 7px;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  transition: all 0.2s ease;
+}
+
+.sidebar-tabs button.active {
+  background: var(--purple-primary);
+  color: white;
+  box-shadow: 0 2px 8px rgba(124, 58, 237, 0.3);
+}
+
+.sidebar-tabs button:hover:not(.active) {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.sidebar-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .left-scroll {
