@@ -19,19 +19,19 @@ function App() {
     chunks,
     status,
     error,
-    isCreating,
     isUploading,
     isProcessing,
     elapsedSeconds,
-    handleSessionSelect,
-    handleCreateSession,
-    handleUpdateSession,
-    handleDeleteSession,
-    handleUploadMedia,
-    handleProcessMedia,
-    handleSearch,
-    handleUpdateChunk,
-    handleCloseSession,
+    loadSessions,
+    loadSessionDetails,
+    createSession,
+    updateSession,
+    deleteSession,
+    uploadMedia,
+    processMedia,
+    searchChunks,
+    updateChunk,
+    closeSession,
   } = useAppState()
 
   // Get YouTube player state and handlers
@@ -82,17 +82,17 @@ function App() {
                 sessions={sessions}
                 sessionId={sessionId}
                 sessionDetails={sessionDetails}
-                isCreating={isCreating}
                 isUploading={isUploading}
                 isProcessing={isProcessing}
                 elapsedSeconds={elapsedSeconds}
-                onSessionSelect={handleSessionSelect}
-                onCreateSession={handleCreateSession}
-                onUpdateSession={handleUpdateSession}
-                onDeleteSession={handleDeleteSession}
-                onUploadMedia={handleUploadMedia}
-                onProcessMedia={handleProcessMedia}
-                onCloseSession={handleCloseSession}
+                onLoadSessions={loadSessions}
+                onLoadSessionDetails={loadSessionDetails}
+                onCreateSession={createSession}
+                onUpdateSession={updateSession}
+                onDeleteSession={deleteSession}
+                onUploadMedia={uploadMedia}
+                onProcessMedia={processMedia}
+                onCloseSession={closeSession}
               />
             )}
 
@@ -108,8 +108,8 @@ function App() {
                 setAutoScrollEnabled={setAutoScrollEnabled}
                 pageIndex={pageIndex}
                 setPageIndex={setPageIndex}
-                onSearch={handleSearch}
-                onUpdateChunk={handleUpdateChunk}
+                onSearch={searchChunks}
+                onUpdateChunk={updateChunk}
                 onTimestampClick={handleTimestampClick}
               />
             )}
