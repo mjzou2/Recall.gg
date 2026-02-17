@@ -31,7 +31,7 @@ Once you can search your comms, you can analyze them:
 - Visualize communication intensity across the game timeline
 - Identify patterns in decision-making and shotcalling
 
-The foundation is search. The goal is team communication intelligence.
+Search is the foundation. The goal is to extract insights from team communication patterns.
 
 **In competition, every slight advantage matters. Spend less time searching and more time improving.**
 
@@ -67,10 +67,10 @@ The foundation is search. The goal is team communication intelligence.
 - ✅ **Chunk annotations** - Add coach notes to chunks (100 char limit, auto-save, searchable via FTS5)
 
 **UI/UX:**
-- ✅ **Dark theme** - Sleek purple-accented design inspired by Linear/Vercel
-- ✅ **Polished Sessions tab** - Progressive disclosure, status badges, relative time, distinct Active Session panel
-- ✅ Chronological chunk flow with minimal visual separation
-- ✅ Maximized player size for screensharing/presentation
+- ✅ **Dark theme** with purple accents
+- ✅ **Progressive disclosure** - Status badges, relative timestamps, collapsible panels
+- ✅ Chronological chunk ordering
+- ✅ Large embedded player optimized for screen sharing
 
 **MVP 1.0 Status:** ✅ Complete and ready for demo
 
@@ -135,7 +135,7 @@ Frontend: http://localhost:5173
 ## Usage
 
 1. **Create a session** - Give it a title and YouTube URL for playback
-2. **Upload audio/video** - Drop your scrim recording (or extract from OBS/Discord)
+2. **Upload audio/video** - Upload your scrim recording
 3. **Process** - Click "Process" to start transcription (~5 min per hour of audio)
 4. **Explore** - Switch to Explore tab to view the searchable transcript
 5. **Search** - Enter keywords like "Baron", "dive mid", "reset"
@@ -217,7 +217,8 @@ See [PRODUCT.md](docs/PRODUCT.md) for detailed roadmap and feature priorities.
 
 ## Acknowledgments
 
-- **faster-whisper** for GPU-accelerated transcription
-- **SQLite FTS5** for blazing-fast full-text search
-- **FastAPI** for the clean Python backend
-- **React + Vite** for the snappy frontend
+- **faster-whisper**
+- **SQLite FTS5**
+- **FastAPI**
+- **React + Vite**
+- **RapidFuzz**
