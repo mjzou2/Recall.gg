@@ -1,6 +1,10 @@
-import sqlite3
 from typing import Dict
 
 
-def row_to_dict(row: sqlite3.Row) -> Dict:
-    return {k: row[k] for k in row.keys()}
+def row_to_dict(row) -> Dict:
+    """Convert a database row to a dict.
+
+    With RealDictCursor this is already a dict-like object,
+    so we just ensure a plain dict is returned.
+    """
+    return dict(row)

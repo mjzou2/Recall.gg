@@ -10,6 +10,7 @@ frontend/dist/
 
 # App data / uploads
 backend/data/
+backend/data_backup/
 backend/uploads/
 *.sqlite
 

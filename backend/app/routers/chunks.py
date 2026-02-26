@@ -1,11 +1,10 @@
 import re
-import sqlite3
 from typing import Dict, List
 
+import psycopg2.extras
 from fastapi import APIRouter, HTTPException
 
-from app.config import DB_PATH
-from app.database import fetch_session, fetch_chunks, fetch_chunk
+from app.database import get_conn, put_conn, fetch_session, fetch_chunks, fetch_chunk
 from app.models import ChunkResponse, ChunkUpdateRequest, SearchRequest
 
 
@@ -49,63 +48,68 @@ def search_chunks(session_id: str, payload: SearchRequest) -> Dict[str, List[Dic
     if limit == 0:
         return {"results": []}
 
-    with sqlite3.connect(DB_PATH) as conn:
-        conn.row_factory = sqlite3.Row
+    conn = get_conn()
+    try:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
 
-        # Determine if we need FTS search
-        use_fts = bool(query)
+            # Determine if we need full-text search
+            use_fts = bool(query)
 
-        if use_fts:
-            # Prepare FTS query
-            tokens = [token for token in query.split() if token]
-            sanitized_tokens = [re.sub(r"['\"\(\)]", "", token) for token in tokens if token]
-            fts_query = " ".join(f"{token}*" for token in sanitized_tokens if token)
+            if use_fts:
+                # Prepare tsquery with prefix matching (:*)
+                tokens = [token for token in query.split() if token]
+                sanitized_tokens = [re.sub(r"['\"\(\)]", "", token) for token in tokens if token]
+                # Build to_tsquery with :* for prefix matching, joined by &
+                tsquery_parts = [f"{token}:*" for token in sanitized_tokens if token]
+                tsquery_str = " & ".join(tsquery_parts)
 
-            # Build WHERE clauses for additional filters
-            where_clauses = ["f.session_id = ?", "chunks_fts MATCH ?"]
-            params = [session_id, fts_query]
+                where_clauses = ["session_id = %s", "tsv @@ to_tsquery('english', %s)"]
+                params: list = [session_id, tsquery_str]
 
-            if start_time_ms is not None:
-                where_clauses.append("c.start_ms < ?")
-                where_clauses.append("c.end_ms > ?")
-                params.extend([end_time_ms, start_time_ms])
+                if start_time_ms is not None:
+                    where_clauses.append("start_ms < %s")
+                    where_clauses.append("end_ms > %s")
+                    params.extend([end_time_ms, start_time_ms])
 
-            if is_bookmarked is True:
-                where_clauses.append("c.is_bookmarked = 1")
+                if is_bookmarked is True:
+                    where_clauses.append("is_bookmarked = 1")
 
-            query_sql = f"""
-                SELECT c.id, c.start_ms, c.end_ms, c.text, c.notes, c.is_bookmarked
-                FROM chunks_fts f
-                JOIN chunks c ON c.rowid = f.rowid
-                WHERE {' AND '.join(where_clauses)}
-                ORDER BY c.start_ms
-                LIMIT ?
-            """
-            params.append(limit)
-            rows = conn.execute(query_sql, params).fetchall()
+                query_sql = f"""
+                    SELECT id, session_id, start_ms, end_ms, text, notes, is_bookmarked
+                    FROM chunks
+                    WHERE {' AND '.join(where_clauses)}
+                    ORDER BY start_ms
+                    LIMIT %s
+                """
+                params.append(limit)
+                cur.execute(query_sql, params)
 
-        else:
-            # Direct query on chunks table
-            where_clauses = ["session_id = ?"]
-            params = [session_id]
+            else:
+                # Direct query on chunks table
+                where_clauses = ["session_id = %s"]
+                params = [session_id]
 
-            if start_time_ms is not None:
-                where_clauses.append("start_ms < ?")
-                where_clauses.append("end_ms > ?")
-                params.extend([end_time_ms, start_time_ms])
+                if start_time_ms is not None:
+                    where_clauses.append("start_ms < %s")
+                    where_clauses.append("end_ms > %s")
+                    params.extend([end_time_ms, start_time_ms])
 
-            if is_bookmarked is True:
-                where_clauses.append("is_bookmarked = 1")
+                if is_bookmarked is True:
+                    where_clauses.append("is_bookmarked = 1")
 
-            query_sql = f"""
-                SELECT id, start_ms, end_ms, text, notes, is_bookmarked
-                FROM chunks
-                WHERE {' AND '.join(where_clauses)}
-                ORDER BY start_ms
-                LIMIT ?
-            """
-            params.append(limit)
-            rows = conn.execute(query_sql, params).fetchall()
+                query_sql = f"""
+                    SELECT id, session_id, start_ms, end_ms, text, notes, is_bookmarked
+                    FROM chunks
+                    WHERE {' AND '.join(where_clauses)}
+                    ORDER BY start_ms
+                    LIMIT %s
+                """
+                params.append(limit)
+                cur.execute(query_sql, params)
+
+            rows = cur.fetchall()
+    finally:
+        put_conn(conn)
 
     results = [
         {
@@ -154,21 +158,26 @@ def update_chunk(chunk_id: str, payload: ChunkUpdateRequest) -> ChunkResponse:
     set_clauses = []
     values = []
     if "notes" in updates:
-        set_clauses.append("notes = ?")
+        set_clauses.append("notes = %s")
         values.append(updates["notes"])
     if "text" in updates:
-        set_clauses.append("text = ?")
+        set_clauses.append("text = %s")
         values.append(updates["text"])
     if "is_bookmarked" in updates:
-        set_clauses.append("is_bookmarked = ?")
+        set_clauses.append("is_bookmarked = %s")
         values.append(updates["is_bookmarked"])
 
     values.append(chunk_id)
 
-    with sqlite3.connect(DB_PATH) as conn:
-        conn.execute(
-            f"UPDATE chunks SET {', '.join(set_clauses)} WHERE id = ?",
-            values,
-        )
+    conn = get_conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                f"UPDATE chunks SET {', '.join(set_clauses)} WHERE id = %s",
+                values,
+            )
+        conn.commit()
+    finally:
+        put_conn(conn)
 
     return ChunkResponse(**fetch_chunk(chunk_id))

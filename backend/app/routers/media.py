@@ -1,5 +1,4 @@
 import shutil
-import sqlite3
 import time
 import uuid
 from pathlib import Path
@@ -7,8 +6,8 @@ from typing import Dict
 
 from fastapi import APIRouter, File, HTTPException, UploadFile
 
-from app.config import DB_PATH, UPLOAD_DIR
-from app.database import fetch_session, fetch_chunks
+from app.config import UPLOAD_DIR
+from app.database import get_conn, put_conn, fetch_session, fetch_chunks
 from app.services.audio import extract_audio
 from app.services.transcription import transcribe_audio, merge_segments
 
@@ -40,11 +39,16 @@ async def upload_media(session_id: str, file: UploadFile = File(...)) -> Dict:
     with dest_path.open("wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
 
-    with sqlite3.connect(DB_PATH) as conn:
-        conn.execute(
-            "UPDATE sessions SET status = 'uploaded', media_path = ?, audio_path = NULL WHERE id = ?",
-            (str(dest_path), session_id),
-        )
+    conn = get_conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "UPDATE sessions SET status = 'uploaded', media_path = %s, audio_path = NULL WHERE id = %s",
+                (str(dest_path), session_id),
+            )
+        conn.commit()
+    finally:
+        put_conn(conn)
 
     return {
         "session": session_id,
@@ -69,12 +73,17 @@ def process_media(session_id: str) -> Dict:
     # Record start time for duration tracking
     start_time = time.time()
 
-    with sqlite3.connect(DB_PATH) as conn:
-        conn.execute(
-            "UPDATE sessions SET status = 'processing', audio_path = NULL WHERE id = ?",
-            (session_id,),
-        )
-        conn.execute("DELETE FROM chunks WHERE session_id = ?", (session_id,))
+    conn = get_conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "UPDATE sessions SET status = 'processing', audio_path = NULL WHERE id = %s",
+                (session_id,),
+            )
+            cur.execute("DELETE FROM chunks WHERE session_id = %s", (session_id,))
+        conn.commit()
+    finally:
+        put_conn(conn)
 
     try:
         print("Processing: extracting audio")
@@ -98,25 +107,36 @@ def process_media(session_id: str) -> Dict:
         # Calculate processing duration
         duration_seconds = int(time.time() - start_time)
 
-        with sqlite3.connect(DB_PATH) as conn:
-            if chunk_rows:
-                conn.executemany(
-                    """
-                    INSERT INTO chunks(id, session_id, start_ms, end_ms, text)
-                    VALUES (?, ?, ?, ?, ?)
-                    """,
-                    chunk_rows,
+        conn = get_conn()
+        try:
+            with conn.cursor() as cur:
+                if chunk_rows:
+                    for row in chunk_rows:
+                        cur.execute(
+                            """
+                            INSERT INTO chunks(id, session_id, start_ms, end_ms, text)
+                            VALUES (%s, %s, %s, %s, %s)
+                            """,
+                            row,
+                        )
+                cur.execute(
+                    "UPDATE sessions SET status = 'ready', audio_path = %s, processing_duration_seconds = %s WHERE id = %s",
+                    (str(audio_path), duration_seconds, session_id),
                 )
-            conn.execute(
-                "UPDATE sessions SET status = 'ready', audio_path = ?, processing_duration_seconds = ? WHERE id = ?",
-                (str(audio_path), duration_seconds, session_id),
-            )
+            conn.commit()
+        finally:
+            put_conn(conn)
     except Exception as exc:
-        with sqlite3.connect(DB_PATH) as conn:
-            conn.execute(
-                "UPDATE sessions SET status = 'failed' WHERE id = ?",
-                (session_id,),
-            )
+        conn = get_conn()
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "UPDATE sessions SET status = 'failed' WHERE id = %s",
+                    (session_id,),
+                )
+            conn.commit()
+        finally:
+            put_conn(conn)
         print(f"Processing failed for session {session_id}: {exc}")
         raise HTTPException(status_code=500, detail="Processing failed") from exc
 

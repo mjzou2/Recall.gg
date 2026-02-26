@@ -1,19 +1,18 @@
 import datetime
 import shutil
-import sqlite3
 import uuid
 from typing import Dict, List
 
+import psycopg2.extras
 from fastapi import APIRouter
 
-from app.config import DB_PATH, UPLOAD_DIR, AUDIO_DIR
-from app.database import fetch_session, fetch_chunks
+from app.config import UPLOAD_DIR, AUDIO_DIR
+from app.database import get_conn, put_conn, fetch_session, fetch_chunks
 from app.models import (
     SessionCreateRequest,
     SessionUpdateRequest,
     SessionResponse,
 )
-from app.utils import row_to_dict
 
 
 router = APIRouter(prefix="/sessions", tags=["sessions"])
@@ -23,14 +22,19 @@ router = APIRouter(prefix="/sessions", tags=["sessions"])
 def create_session(payload: SessionCreateRequest) -> SessionResponse:
     session_id = str(uuid.uuid4())
     created_at = datetime.datetime.utcnow().isoformat() + "Z"
-    with sqlite3.connect(DB_PATH) as conn:
-        conn.execute(
-            """
-            INSERT INTO sessions(id, title, youtube_url, notes, created_at)
-            VALUES (?, ?, ?, ?, ?)
-            """,
-            (session_id, payload.title, payload.youtube_url, payload.notes, created_at),
-        )
+    conn = get_conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO sessions(id, title, youtube_url, notes, created_at)
+                VALUES (%s, %s, %s, %s, %s)
+                """,
+                (session_id, payload.title, payload.youtube_url, payload.notes, created_at),
+            )
+        conn.commit()
+    finally:
+        put_conn(conn)
     return SessionResponse(
         id=session_id,
         title=payload.title,
@@ -46,12 +50,16 @@ def create_session(payload: SessionCreateRequest) -> SessionResponse:
 
 @router.get("", response_model=List[SessionResponse])
 def list_sessions() -> List[SessionResponse]:
-    with sqlite3.connect(DB_PATH) as conn:
-        conn.row_factory = sqlite3.Row
-        rows = conn.execute(
-            "SELECT * FROM sessions ORDER BY datetime(created_at) DESC"
-        ).fetchall()
-    return [SessionResponse(**row_to_dict(row)) for row in rows]
+    conn = get_conn()
+    try:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute(
+                "SELECT * FROM sessions ORDER BY created_at DESC"
+            )
+            rows = cur.fetchall()
+    finally:
+        put_conn(conn)
+    return [SessionResponse(**dict(row)) for row in rows]
 
 
 @router.get("/{session_id}")
@@ -71,24 +79,34 @@ def update_session(session_id: str, payload: SessionUpdateRequest) -> SessionRes
     values = []
     for key in ("title", "youtube_url", "notes"):
         if key in updates:
-            fields.append(f"{key} = ?")
+            fields.append(f"{key} = %s")
             values.append(updates[key])
 
     values.append(session_id)
-    with sqlite3.connect(DB_PATH) as conn:
-        conn.execute(
-            f"UPDATE sessions SET {', '.join(fields)} WHERE id = ?",
-            values,
-        )
+    conn = get_conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                f"UPDATE sessions SET {', '.join(fields)} WHERE id = %s",
+                values,
+            )
+        conn.commit()
+    finally:
+        put_conn(conn)
 
     return SessionResponse(**fetch_session(session_id))
 
 @router.delete("/{session_id}")
 def delete_session(session_id: str) -> Dict[str, bool]:
     fetch_session(session_id)
-    with sqlite3.connect(DB_PATH) as conn:
-        conn.execute("DELETE FROM chunks WHERE session_id = ?", (session_id,))
-        conn.execute("DELETE FROM sessions WHERE id = ?", (session_id,))
+    conn = get_conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("DELETE FROM chunks WHERE session_id = %s", (session_id,))
+            cur.execute("DELETE FROM sessions WHERE id = %s", (session_id,))
+        conn.commit()
+    finally:
+        put_conn(conn)
 
     upload_path = UPLOAD_DIR / session_id
     if upload_path.exists():
