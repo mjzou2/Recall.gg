@@ -51,7 +51,7 @@ Search is the foundation. The goal is to extract insights from team communicatio
 - ✅ ~60% base accuracy on League terms, targeting 70-80% with fuzzy correction
 
 **Search & Navigation:**
-- ✅ **Keyword search** - Full-text search, searches both transcript and notes
+- ✅ **Keyword search** - Postgres full-text search (tsvector + GIN), searches both transcript and notes
 - ✅ **Time range filtering** - Filter chunks by game time (MM:SS format)
 - ✅ **Bookmark filtering** - Filter to show only bookmarked chunks via "Show bookmarked only" toggle
 - ✅ **Embedded YouTube player** - Click timestamps to seek player instantly
@@ -64,7 +64,7 @@ Search is the foundation. The goal is to extract insights from team communicatio
 - ✅ **Copy timestamp URL** to clipboard with 2-second confirmation
 - ✅ **Bookmarks/favorites** - Star important chunks for quick access, searchable via filter toggle
 - ✅ **Chunk inline editing** - Edit transcribed text directly (1000 char limit, auto-save on blur/Enter)
-- ✅ **Chunk annotations** - Add coach notes to chunks (100 char limit, auto-save, searchable via FTS5)
+- ✅ **Chunk annotations** - Add coach notes to chunks (100 char limit, auto-save, searchable via full-text search)
 
 **UI/UX:**
 - ✅ **Dark theme** with purple accents
@@ -85,7 +85,7 @@ See [PRODUCT.md](docs/PRODUCT.md) for the full roadmap (MVP 1.5, 2.0).
 **System dependencies:**
 ```bash
 sudo apt update
-sudo apt install -y ffmpeg sqlite3
+sudo apt install -y ffmpeg docker.io docker-compose-v2
 ```
 
 **Optional: GPU acceleration (NVIDIA + CUDA)**
@@ -97,7 +97,13 @@ sudo apt install -y cuda-toolkit-12-9 cudnn9-cuda-12
 
 ### Setup
 
-**1. Clone and install backend:**
+**1. Start Postgres:**
+```bash
+docker compose up -d
+# Postgres at localhost:5432 (user=recall, password=recall, db=recall)
+```
+
+**2. Clone and install backend:**
 ```bash
 cd backend
 python -m venv .venv
@@ -105,16 +111,17 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-**2. Create `.env` file in `backend/`:**
+**3. Create `.env` file in `backend/`:**
 ```bash
 WHISPER_MODEL=small.en
 TRANSCRIBE_DEVICE=cuda  # or 'cpu' if no GPU
 DISABLE_LOL_NORMALIZE=0
 DISABLE_FUZZY_CORRECT=0
 DISABLE_AUDIO_DENOISE=0
+# Postgres defaults (localhost:5432/recall) match docker-compose.yml
 ```
 
-**3. Start backend:**
+**4. Start backend:**
 ```bash
 cd backend
 source .venv/bin/activate
@@ -122,7 +129,7 @@ uvicorn main:app --reload --port 8000
 ```
 API docs: http://localhost:8000/docs
 
-**4. Install and start frontend:**
+**5. Install and start frontend:**
 ```bash
 cd frontend
 npm install
@@ -146,10 +153,11 @@ Frontend: http://localhost:5173
 
 ## Technical Stack
 
-- **Backend:** FastAPI (Python), SQLite with FTS5, faster-whisper, ffmpeg, RapidFuzz
+- **Backend:** FastAPI (Python), Postgres with tsvector full-text search, psycopg2, faster-whisper, ffmpeg, RapidFuzz
 - **Frontend:** React + Vite
+- **Database:** Postgres (via Docker Compose), psycopg2 connection pool, no ORM
 - **Environment:** WSL2, GPU-accelerated (CUDA 12.9), local-first (no cloud)
-- **Data:** All sessions/chunks/audio stored locally in `backend/data/`
+- **Data:** Sessions/chunks in Postgres, uploaded media/audio in `backend/data/`
 
 ---
 
@@ -183,12 +191,12 @@ vodcomms/
 │   │   ├── main.py          # FastAPI app initialization
 │   │   ├── config.py        # Environment config and constants
 │   │   ├── models.py        # Pydantic request/response schemas
-│   │   ├── database.py      # SQLite operations and FTS5 queries
+│   │   ├── database.py      # Postgres connection pool and queries
 │   │   ├── routers/         # API endpoints (sessions, chunks, media)
 │   │   └── services/        # Business logic (audio, transcription, text_processing)
 │   ├── term_bank.json       # League-specific vocabulary (305 terms)
 │   ├── requirements.txt     # Python dependencies
-│   ├── data/                # SQLite DB + uploaded media
+│   ├── data/                # Uploaded media + extracted audio
 │   └── .env.example         # Environment variables template
 ├── frontend/
 │   ├── src/
@@ -218,7 +226,7 @@ See [PRODUCT.md](docs/PRODUCT.md) for detailed roadmap and feature priorities.
 ## Acknowledgments
 
 - **faster-whisper**
-- **SQLite FTS5**
+- **PostgreSQL**
 - **FastAPI**
 - **React + Vite**
 - **RapidFuzz**

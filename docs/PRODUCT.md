@@ -38,15 +38,15 @@ Most VOD tools parse **game events** (kills, objectives, gold). RECALL.GG parses
   - ✓ **Fuzzy post-processing with RapidFuzz** - auto-corrects against term bank (score_cutoff=82)
   - ✓ Achieves ~60% base accuracy on League terms, ~5 min per hour of audio
   - ✓ Target with fuzzy processing: 70-80% accuracy
-- ✓ Chunk storage with timestamps in SQLite
+- ✓ Chunk storage with timestamps in Postgres
 
 **Search & Navigation:**
-- ✓ Keyword search with FTS5 + BM25 ranking
+- ✓ Keyword search with Postgres tsvector full-text search
 - ✓ Time range filtering (filter chunks by MM:SS game time)
 - ⚙️ **Synonym expansion** - Hardcoded alias map for League-specific terms
   - e.g. searching "baron" also matches "Nashor", "Nash"
   - e.g. searching "herald" also matches "Shelly"
-  - Expands FTS query tokens before hitting SQLite, no new dependencies
+  - Expands tsquery tokens before hitting Postgres, no new dependencies
 - ✓ Clickable timestamps (seek embedded player instantly)
 - ✓ Copy timestamp URL to clipboard
 - ✓ Tab-based sidebar (Sessions / Explore tabs)
@@ -74,22 +74,22 @@ Most VOD tools parse **game events** (kills, objectives, gold). RECALL.GG parses
   - No layout shift: buttons use opacity transitions, positions remain static
 - ✓ **Manual chunk annotations** - Add coach notes to specific chunks
   - "Game-losing call", "Review with ADC", "Good macro example"
-  - Stored as notes field on chunks table, searchable via FTS5
+  - Stored as notes field on chunks table, searchable via tsvector full-text search
   - Auto-save on blur, Enter to save, Escape to cancel
 - ✓ **Chunk inline editing** - Fix transcription errors directly
   - Click expanded chunk text to edit → updates chunk text → improves future search
-  - 1000 char limit, auto-save on blur/Enter, FTS5 auto-syncs
+  - 1000 char limit, auto-save on blur/Enter, tsvector auto-updates
 - ✓ **Bookmarks/favorites** - Star important chunks for quick access
   - Filter toggle: "Show bookmarked only" in search controls
   - Bookmarked chunks show ⭐ even when collapsed
 
 ### Technical Stack
-- **Backend:** FastAPI (Python), SQLite with FTS5, faster-whisper, ffmpeg, RapidFuzz
-  - Modular structure: routers (API endpoints), services (business logic), database (queries)
+- **Backend:** FastAPI (Python), Postgres with tsvector full-text search, psycopg2, faster-whisper, ffmpeg, RapidFuzz
+  - Modular structure: routers (API endpoints), services (business logic), database (connection pool + queries)
 - **Frontend:** React + Vite, dark theme with purple accents (Linear/Vercel aesthetic)
   - Component-based architecture with custom hooks and CSS modules
 - **Environment:** WSL2, GPU-accelerated (CUDA 12.9), local-first (no cloud)
-- **Data:** All sessions/chunks/audio stored locally in `backend/data/`
+- **Data:** Sessions/chunks in Postgres (Docker), uploaded media/audio in `backend/data/`
 
 ### Constraints
 - **No YouTube download** - User provides YouTube URL for playback, uploads audio separately

@@ -4,5 +4,5 @@
 # Useful commands
 - git status
 - git diff
-- sqlite3 backend/data/app.sqlite
+- psql -h localhost -U recall -d recall
 - nvidia-smi
