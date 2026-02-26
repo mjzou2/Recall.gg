@@ -51,7 +51,7 @@ Search is the foundation. The goal is to extract insights from team communicatio
 - ✅ ~60% base accuracy on League terms, targeting 70-80% with fuzzy correction
 
 **Search & Navigation:**
-- ✅ **Keyword search** - Full-text search with BM25 ranking (SQLite FTS5), searches both transcript and notes
+- ✅ **Keyword search** - Full-text search, searches both transcript and notes
 - ✅ **Time range filtering** - Filter chunks by game time (MM:SS format)
 - ✅ **Bookmark filtering** - Filter to show only bookmarked chunks via "Show bookmarked only" toggle
 - ✅ **Embedded YouTube player** - Click timestamps to seek player instantly
