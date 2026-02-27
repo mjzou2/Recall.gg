@@ -29,16 +29,19 @@ Most VOD tools parse **game events** (kills, objectives, gold). RECALL.GG parses
 **Media Processing:**
 - ✓ Upload audio (mp3/m4a/wav) and video (mp4/mkv/avi)
 - ✓ Audio extraction via ffmpeg with light denoising (highpass + lowpass + afftdn)
-- ✓ Transcription pipeline:
-  - ✓ faster-whisper with GPU support (CUDA)
+- ✓ Transcription pipeline (whisperX):
+  - ✓ WhisperX with GPU support (CUDA) — replaces faster-whisper
+  - ✓ Word-level timestamp alignment via whisperx.align()
+  - ✓ **Speaker diarization** via pyannote (optional, fault-tolerant, requires HF_TOKEN)
+  - ✓ Sequential model loading for VRAM management (8GB GPU compatible)
   - ✓ League-specific term bank (300+ terms: champions, objectives, comms vocabulary)
   - ✓ Contextual initial_prompt + hotwords for domain accuracy
   - ✓ Model selection (base/small/medium) - currently using small.en
   - ✓ Post-normalization for common mishears (19 regex rules: apostrophe champions, abbreviations, etc.)
   - ✓ **Fuzzy post-processing with RapidFuzz** - auto-corrects against term bank (score_cutoff=82)
-  - ✓ Achieves ~60% base accuracy on League terms, ~5 min per hour of audio
+  - ✓ Achieves ~60% base accuracy on League terms
   - ✓ Target with fuzzy processing: 70-80% accuracy
-- ✓ Chunk storage with timestamps in Postgres
+- ✓ Chunk storage with timestamps and speaker labels in Postgres
 
 **Search & Navigation:**
 - ✓ Keyword search with Postgres tsvector full-text search
@@ -84,7 +87,7 @@ Most VOD tools parse **game events** (kills, objectives, gold). RECALL.GG parses
   - Bookmarked chunks show ⭐ even when collapsed
 
 ### Technical Stack
-- **Backend:** FastAPI (Python), Postgres with tsvector full-text search, psycopg2, faster-whisper, ffmpeg, RapidFuzz
+- **Backend:** FastAPI (Python), Postgres with tsvector full-text search, psycopg2, whisperX (whisper + alignment + diarization), ffmpeg, RapidFuzz
   - Modular structure: routers (API endpoints), services (business logic), database (connection pool + queries)
 - **Frontend:** React + Vite, dark theme with purple accents (Linear/Vercel aesthetic)
   - Component-based architecture with custom hooks and CSS modules
@@ -102,10 +105,15 @@ Most VOD tools parse **game events** (kills, objectives, gold). RECALL.GG parses
 **Goal:** Add ML/LLM-powered features for deeper insights.
 
 ### Speaker Intelligence
-- **Speaker diarization** - Identify who said what (Top, JG, Mid, ADC, Supp)
-  - Use pyannote.audio for voice clustering
-  - Manual labeling fallback (one-time setup per team)
-  - Target: 65-75% accuracy (good enough with manual corrections)
+- ✓ **Speaker diarization (backend)** - Identify who said what via pyannote/whisperX
+  - Uses pyannote/speaker-diarization-community-1 for voice clustering
+  - Speaker labels stored as `speaker` field on chunks (e.g. "SPEAKER_00")
+  - Fault-tolerant: diarization failures fall back to speaker=None
+  - Requires HF_TOKEN and accepted model licenses on HuggingFace
+- **Speaker diarization (frontend)** - Display and filter by speaker
+  - Show speaker labels in chunk UI
+  - Manual speaker labeling (map SPEAKER_00 → "JG", etc.)
+  - Filter/search by speaker
   - Enables searches like "show me everything the jungler said about Baron"
 
 ### Content Intelligence
@@ -226,7 +234,7 @@ Most VOD tools parse **game events** (kills, objectives, gold). RECALL.GG parses
 - Evaluation harness for measuring transcription quality improvements
 
 ### MVP 1.5 Feature Priority (Based on Coach Feedback)
-1. Speaker diarization (if coaches say "can't tell who said what")
+1. Speaker diarization **frontend UI** (backend diarization is implemented)
 2. Top moments LLM (if coaches say "too many chunks to review")
 3. Semantic search (if coaches say "keyword search misses things")
 4. Timeline visualization (if coaches say "hard to see patterns")
