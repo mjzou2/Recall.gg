@@ -44,7 +44,8 @@ Search is the foundation. The goal is to extract insights from team communicatio
 **Media Processing:**
 - ✅ Upload audio (mp3, m4a, wav) or video (mp4, mkv, avi)
 - ✅ Automatic audio extraction from video files (ffmpeg) with light denoising
-- ✅ GPU-accelerated transcription (faster-whisper + CUDA)
+- ✅ GPU-accelerated transcription (whisperX + CUDA) with word-level alignment
+- ✅ **Speaker diarization** via pyannote (identifies who said what)
 - ✅ **League-specific term bank** (305 terms: champions, objectives, items, locations, mechanics)
 - ✅ Post-normalization for common mishears (19 regex rules: apostrophe champions, abbreviations, etc.)
 - ✅ Fuzzy post-processing with RapidFuzz (auto-corrects against term bank, score_cutoff=82)
@@ -118,6 +119,7 @@ TRANSCRIBE_DEVICE=cuda  # or 'cpu' if no GPU
 DISABLE_LOL_NORMALIZE=0
 DISABLE_FUZZY_CORRECT=0
 DISABLE_AUDIO_DENOISE=0
+HF_TOKEN=hf_your_token_here  # HuggingFace token for speaker diarization
 # Postgres defaults (localhost:5432/recall) match docker-compose.yml
 ```
 
@@ -153,7 +155,7 @@ Frontend: http://localhost:5173
 
 ## Technical Stack
 
-- **Backend:** FastAPI (Python), Postgres with tsvector full-text search, psycopg2, faster-whisper, ffmpeg, RapidFuzz
+- **Backend:** FastAPI (Python), Postgres with tsvector full-text search, psycopg2, whisperX (transcription + alignment + diarization), ffmpeg, RapidFuzz
 - **Frontend:** React + Vite
 - **Database:** Postgres (via Docker Compose), psycopg2 connection pool, no ORM
 - **Environment:** WSL2, GPU-accelerated (CUDA 12.9), local-first (no cloud)
@@ -216,7 +218,7 @@ vodcomms/
 ## Roadmap
 
 **MVP 1.0 (✅ Complete):** Full local tool with search, transcription, time filtering, bookmarks, and annotations
-**MVP 1.5 (Next):** Speaker diarization, LLM-powered highlights, semantic search, multi-session search
+**MVP 1.5 (Next):** Speaker diarization frontend UI, LLM-powered highlights, semantic search, multi-session search
 **MVP 2.0 (Future):** Production SaaS with teams, cloud hosting, fine-tuned models, live transcription
 
 See [PRODUCT.md](docs/PRODUCT.md) for detailed roadmap and feature priorities.
@@ -225,7 +227,7 @@ See [PRODUCT.md](docs/PRODUCT.md) for detailed roadmap and feature priorities.
 
 ## Acknowledgments
 
-- **faster-whisper**
+- **whisperX** (and faster-whisper, pyannote.audio)
 - **PostgreSQL**
 - **FastAPI**
 - **React + Vite**
