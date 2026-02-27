@@ -42,38 +42,38 @@ def _unload_model(model) -> None:
         torch.cuda.empty_cache()
 
 
-def _build_hotwords(term_bank: Dict) -> str:
-    """Build hotwords string from term bank (max ~35 terms)."""
-    hotwords_list: List[str] = []
-    if term_bank:
-        hotwords_list.extend(term_bank.get("objectives", []))
-        hotwords_list.extend(term_bank.get("common_comms", [])[:15])
+HOTWORDS = [
+    # Apostrophe champions (Whisper mangles these consistently)
+    "Kha'Zix", "Cho'Gath", "Rek'Sai", "Kai'Sa", "Bel'Veth",
+    "K'Sante", "Vel'Koz", "Kog'Maw", "Jak'Sho",
+    # Non-English champion names
+    "Qiyana", "Naafiri", "Xayah", "Xerath", "Zyra",
+    "Aphelios", "Aurelion Sol", "Renata Glasc",
+    # Abbreviations & jargon
+    "ADC", "BORK", "IE", "BT", "CS", "CC", "LDR", "QSS", "RFC", "ROA",
+    # Esports terms not in normal English
+    "prio", "crossmap", "tribush", "krugs", "gromp", "raptors",
+    # Items Whisper wouldn't know
+    "Zhonya's", "Liandry's", "Serylda's", "Navori", "Youmuu's",
+    "Guinsoo", "Morellonomicon", "Rabadon's",
+]
 
-    if not hotwords_list:
-        hotwords_list = [
-            "baron", "herald", "grubs", "dragon", "drake", "ward", "reset",
-            "tp", "teleport", "flash", "smite", "invade", "dive", "prio", "push"
-        ]
+INITIAL_PROMPT = (
+    "Okay we need prio mid before drake spawns. Kai'Sa has BORK, Rek'Sai is "
+    "topside. They're setting up baron, we need to rotate. Flash is down on "
+    "their Nautilus. Zhonya's is up though. Let's crash this wave and group "
+    "for elder. ADC needs to play safe, they have Kha'Zix in fog."
+)
 
-    return ", ".join(hotwords_list)
+
+def _build_hotwords() -> str:
+    """Return curated hotwords string for terms Whisper gets wrong."""
+    return ", ".join(HOTWORDS)
 
 
-def _build_initial_prompt(term_bank: Dict) -> str:
-    """Build initial prompt with key terms for Whisper context."""
-    if not term_bank:
-        return ""
-
-    objectives = term_bank.get("objectives", [])[:5]
-    champions = term_bank.get("champions", [])[:4]
-    comms = term_bank.get("common_comms", [])[:4]
-
-    return (
-        f"The team secured {objectives[0] if objectives else 'Baron'} and warded river. "
-        f"{champions[0] if champions else 'The mid laner'} and "
-        f"{champions[1] if len(champions) > 1 else 'the jungler'} "
-        f"rotated mid while tracking the enemy. They need to "
-        f"{comms[0] if comms else 'reset'} and get vision."
-    )
+def _build_initial_prompt() -> str:
+    """Return static initial prompt that sounds like natural scrim comms."""
+    return INITIAL_PROMPT
 
 
 def transcribe_audio(audio_path: Path) -> List[Dict]:
@@ -91,8 +91,8 @@ def transcribe_audio(audio_path: Path) -> List[Dict]:
     device = _get_device()
     compute_type = _get_compute_type()
 
-    hotwords = _build_hotwords(term_bank)
-    initial_prompt = _build_initial_prompt(term_bank)
+    hotwords = _build_hotwords()
+    initial_prompt = _build_initial_prompt()
 
     print(
         "Transcribing with whisperX model=%s device=%s batch_size=%d normalize=%s fuzzy=%s diarize=%s"

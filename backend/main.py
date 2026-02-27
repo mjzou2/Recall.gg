@@ -6,7 +6,7 @@ import glob
 import os
 
 try:
-    import nvidia.cudnn
+    import nvidia.cudnn  # type: ignore[import-untyped]
     _cudnn_dir = os.path.join(nvidia.cudnn.__path__[0], "lib")
     for _lib in sorted(glob.glob(os.path.join(_cudnn_dir, "libcudnn*.so.9"))):
         ctypes.CDLL(_lib, mode=ctypes.RTLD_GLOBAL)
