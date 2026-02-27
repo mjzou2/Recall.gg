@@ -100,6 +100,7 @@ def process_media(session_id: str) -> Dict:
                 chunk["start_ms"],
                 chunk["end_ms"],
                 chunk["text"],
+                chunk.get("speaker"),
             )
             for chunk in chunks
         ]
@@ -114,8 +115,8 @@ def process_media(session_id: str) -> Dict:
                     for row in chunk_rows:
                         cur.execute(
                             """
-                            INSERT INTO chunks(id, session_id, start_ms, end_ms, text)
-                            VALUES (%s, %s, %s, %s, %s)
+                            INSERT INTO chunks(id, session_id, start_ms, end_ms, text, speaker)
+                            VALUES (%s, %s, %s, %s, %s, %s)
                             """,
                             row,
                         )

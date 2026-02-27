@@ -97,6 +97,7 @@ def init_storage() -> None:
             for col, col_type, col_default in [
                 ("notes", "TEXT", None),
                 ("is_bookmarked", "INTEGER", "0"),
+                ("speaker", "TEXT", None),
             ]:
                 cur.execute("""
                     SELECT 1 FROM information_schema.columns
@@ -159,7 +160,7 @@ def fetch_chunks(session_id: str) -> List[Dict]:
     try:
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
             cur.execute(
-                "SELECT id, session_id, start_ms, end_ms, text, notes, is_bookmarked FROM chunks WHERE session_id = %s ORDER BY start_ms",
+                "SELECT id, session_id, start_ms, end_ms, text, notes, is_bookmarked, speaker FROM chunks WHERE session_id = %s ORDER BY start_ms",
                 (session_id,),
             )
             rows = cur.fetchall()
@@ -173,7 +174,7 @@ def fetch_chunk(chunk_id: str) -> Dict:
     try:
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
             cur.execute(
-                "SELECT id, session_id, start_ms, end_ms, text, notes, is_bookmarked FROM chunks WHERE id = %s",
+                "SELECT id, session_id, start_ms, end_ms, text, notes, is_bookmarked, speaker FROM chunks WHERE id = %s",
                 (chunk_id,),
             )
             row = cur.fetchone()

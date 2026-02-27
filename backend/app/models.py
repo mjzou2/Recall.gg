@@ -33,6 +33,7 @@ class ChunkResponse(BaseModel):
     text: str
     notes: Optional[str] = None
     is_bookmarked: Optional[int] = 0
+    speaker: Optional[str] = None
 
 class ChunkUpdateRequest(BaseModel):
     notes: Optional[str] = None

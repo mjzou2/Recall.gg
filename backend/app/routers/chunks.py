@@ -75,7 +75,7 @@ def search_chunks(session_id: str, payload: SearchRequest) -> Dict[str, List[Dic
                     where_clauses.append("is_bookmarked = 1")
 
                 query_sql = f"""
-                    SELECT id, session_id, start_ms, end_ms, text, notes, is_bookmarked
+                    SELECT id, session_id, start_ms, end_ms, text, notes, is_bookmarked, speaker
                     FROM chunks
                     WHERE {' AND '.join(where_clauses)}
                     ORDER BY start_ms
@@ -98,7 +98,7 @@ def search_chunks(session_id: str, payload: SearchRequest) -> Dict[str, List[Dic
                     where_clauses.append("is_bookmarked = 1")
 
                 query_sql = f"""
-                    SELECT id, session_id, start_ms, end_ms, text, notes, is_bookmarked
+                    SELECT id, session_id, start_ms, end_ms, text, notes, is_bookmarked, speaker
                     FROM chunks
                     WHERE {' AND '.join(where_clauses)}
                     ORDER BY start_ms
@@ -119,6 +119,7 @@ def search_chunks(session_id: str, payload: SearchRequest) -> Dict[str, List[Dic
             "text": row["text"],
             "notes": row["notes"],
             "is_bookmarked": row["is_bookmarked"],
+            "speaker": row.get("speaker"),
         }
         for row in rows
     ]
