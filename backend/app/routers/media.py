@@ -17,7 +17,7 @@ router = APIRouter(prefix="/sessions", tags=["media"])
 
 @router.post("/{session_id}/media")
 async def upload_media(session_id: str, file: UploadFile = File(...)) -> Dict:
-    session = fetch_session(session_id)
+    fetch_session(session_id)
     if not file.filename:
         raise HTTPException(status_code=400, detail="Filename is required")
 
