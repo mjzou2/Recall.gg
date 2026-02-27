@@ -29,7 +29,7 @@ DISABLE_AUDIO_DENOISE = os.environ.get("DISABLE_AUDIO_DENOISE", "0") == "1"
 
 # WhisperX configuration
 HF_TOKEN = os.environ.get("HF_TOKEN", "")
-_num_speakers = os.environ.get("NUM_SPEAKERS")
+_num_speakers = os.environ.get("NUM_SPEAKERS", "5")
 NUM_SPEAKERS: Optional[int] = int(_num_speakers) if _num_speakers else None
 WHISPERX_BATCH_SIZE = int(os.environ.get("WHISPERX_BATCH_SIZE", "16"))
 MIN_CHUNK_MS = int(os.environ.get("MIN_CHUNK_MS", "2000"))
