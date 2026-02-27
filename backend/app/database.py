@@ -47,6 +47,9 @@ def init_storage() -> None:
     try:
         conn.autocommit = True
         with conn.cursor() as cur:
+            # Enable pgvector extension
+            cur.execute("CREATE EXTENSION IF NOT EXISTS vector")
+
             # Create sessions table
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS sessions (
@@ -116,12 +119,23 @@ def init_storage() -> None:
                     ) STORED
                 """)
 
+            # Safe addition of embedding column for semantic search (vector(384) for all-MiniLM-L6-v2)
+            cur.execute("""
+                SELECT 1 FROM information_schema.columns
+                WHERE table_name = 'chunks' AND column_name = 'embedding'
+            """)
+            if not cur.fetchone():
+                cur.execute("ALTER TABLE chunks ADD COLUMN embedding vector(384)")
+
             # Create indexes
             cur.execute("""
                 CREATE INDEX IF NOT EXISTS idx_chunks_session ON chunks(session_id)
             """)
             cur.execute("""
                 CREATE INDEX IF NOT EXISTS idx_chunks_tsv ON chunks USING GIN(tsv)
+            """)
+            cur.execute("""
+                CREATE INDEX IF NOT EXISTS idx_chunks_embedding ON chunks USING hnsw(embedding vector_cosine_ops)
             """)
     finally:
         put_conn(conn)
