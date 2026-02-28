@@ -26,6 +26,8 @@ TRANSCRIBE_DEVICE = os.environ.get("TRANSCRIBE_DEVICE", "cuda")
 DISABLE_LOL_NORMALIZE = os.environ.get("DISABLE_LOL_NORMALIZE", "0") == "1"
 DISABLE_FUZZY_CORRECT = os.environ.get("DISABLE_FUZZY_CORRECT", "0") == "1"
 DISABLE_AUDIO_DENOISE = os.environ.get("DISABLE_AUDIO_DENOISE", "0") == "1"
+DISABLE_SEMANTIC_SEARCH = os.environ.get("DISABLE_SEMANTIC_SEARCH", "0") == "1"
+SEMANTIC_SEARCH_THRESHOLD = float(os.environ.get("SEMANTIC_SEARCH_THRESHOLD", "0.5"))
 
 # WhisperX configuration
 HF_TOKEN = os.environ.get("HF_TOKEN", "")

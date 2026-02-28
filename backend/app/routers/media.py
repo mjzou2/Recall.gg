@@ -6,9 +6,10 @@ from typing import Dict
 
 from fastapi import APIRouter, File, HTTPException, UploadFile
 
-from app.config import UPLOAD_DIR
+from app.config import UPLOAD_DIR, DISABLE_SEMANTIC_SEARCH
 from app.database import get_conn, put_conn, fetch_session, fetch_chunks
 from app.services.audio import extract_audio
+from app.services.embedding import embed_texts
 from app.services.transcription import transcribe_audio, merge_segments
 
 
@@ -93,17 +94,31 @@ def process_media(session_id: str) -> Dict:
         print("Processing: merging segments")
         chunks = merge_segments(segments) if segments else []
 
-        chunk_rows = [
-            (
+        # Embed chunk texts for semantic search
+        embeddings = None
+        if not DISABLE_SEMANTIC_SEARCH and chunks:
+            print("Processing: embedding chunks for semantic search")
+            chunk_texts = [chunk["text"] for chunk in chunks]
+            embeddings = embed_texts(chunk_texts)
+            if embeddings:
+                print(f"Embedded {len(embeddings)} chunks")
+            else:
+                print("Warning: embedding failed, chunks will have NULL embeddings")
+
+        chunk_rows = []
+        for i, chunk in enumerate(chunks):
+            embedding = None
+            if embeddings and i < len(embeddings):
+                embedding = embeddings[i]
+            chunk_rows.append((
                 str(uuid.uuid4()),
                 session_id,
                 chunk["start_ms"],
                 chunk["end_ms"],
                 chunk["text"],
                 chunk.get("speaker"),
-            )
-            for chunk in chunks
-        ]
+                str(embedding) if embedding else None,
+            ))
 
         # Calculate processing duration
         duration_seconds = int(time.time() - start_time)
@@ -115,8 +130,8 @@ def process_media(session_id: str) -> Dict:
                     for row in chunk_rows:
                         cur.execute(
                             """
-                            INSERT INTO chunks(id, session_id, start_ms, end_ms, text, speaker)
-                            VALUES (%s, %s, %s, %s, %s, %s)
+                            INSERT INTO chunks(id, session_id, start_ms, end_ms, text, speaker, embedding)
+                            VALUES (%s, %s, %s, %s, %s, %s, %s::vector)
                             """,
                             row,
                         )

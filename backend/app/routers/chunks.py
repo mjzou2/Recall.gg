@@ -4,8 +4,10 @@ from typing import Dict, List
 import psycopg2.extras
 from fastapi import APIRouter, HTTPException
 
+from app.config import DISABLE_SEMANTIC_SEARCH, SEMANTIC_SEARCH_THRESHOLD
 from app.database import get_conn, put_conn, fetch_session, fetch_chunks, fetch_chunk
 from app.models import ChunkResponse, ChunkUpdateRequest, SearchRequest
+from app.services.embedding import embed_text
 
 
 router = APIRouter(tags=["chunks"])
@@ -51,15 +53,13 @@ def search_chunks(session_id: str, payload: SearchRequest) -> Dict[str, List[Dic
     conn = get_conn()
     try:
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            keyword_results = []
+            semantic_results = []
 
-            # Determine if we need full-text search
-            use_fts = bool(query)
-
-            if use_fts:
-                # Prepare tsquery with prefix matching (:*)
+            if query:
+                # --- Keyword search (existing behavior, unchanged) ---
                 tokens = [token for token in query.split() if token]
                 sanitized_tokens = [re.sub(r"['\"\(\)]", "", token) for token in tokens if token]
-                # Build to_tsquery with :* for prefix matching, joined by &
                 tsquery_parts = [f"{token}:*" for token in sanitized_tokens if token]
                 tsquery_str = " & ".join(tsquery_parts)
 
@@ -74,7 +74,7 @@ def search_chunks(session_id: str, payload: SearchRequest) -> Dict[str, List[Dic
                 if is_bookmarked is True:
                     where_clauses.append("is_bookmarked = 1")
 
-                query_sql = f"""
+                keyword_sql = f"""
                     SELECT id, session_id, start_ms, end_ms, text, notes, is_bookmarked, speaker
                     FROM chunks
                     WHERE {' AND '.join(where_clauses)}
@@ -82,10 +82,40 @@ def search_chunks(session_id: str, payload: SearchRequest) -> Dict[str, List[Dic
                     LIMIT %s
                 """
                 params.append(limit)
-                cur.execute(query_sql, params)
+                cur.execute(keyword_sql, params)
+                keyword_results = cur.fetchall()
+
+                # --- Semantic search (additive) ---
+                if not DISABLE_SEMANTIC_SEARCH:
+                    query_embedding = embed_text(query)
+                    if query_embedding is not None:
+                        sem_where = ["session_id = %s", "embedding IS NOT NULL",
+                                     "embedding <=> %s::vector < %s"]
+                        query_emb_str = str(query_embedding)
+                        sem_params: list = [session_id, query_emb_str, SEMANTIC_SEARCH_THRESHOLD]
+
+                        if start_time_ms is not None:
+                            sem_where.append("start_ms < %s")
+                            sem_where.append("end_ms > %s")
+                            sem_params.extend([end_time_ms, start_time_ms])
+
+                        if is_bookmarked is True:
+                            sem_where.append("is_bookmarked = 1")
+
+                        sem_sql = f"""
+                            SELECT id, session_id, start_ms, end_ms, text, notes, is_bookmarked, speaker
+                            FROM chunks
+                            WHERE {' AND '.join(sem_where)}
+                            ORDER BY embedding <=> %s::vector
+                            LIMIT %s
+                        """
+                        sem_params.append(query_emb_str)
+                        sem_params.append(20)
+                        cur.execute(sem_sql, sem_params)
+                        semantic_results = cur.fetchall()
 
             else:
-                # Direct query on chunks table
+                # --- No query: time-range / bookmark only (unchanged) ---
                 where_clauses = ["session_id = %s"]
                 params = [session_id]
 
@@ -106,10 +136,24 @@ def search_chunks(session_id: str, payload: SearchRequest) -> Dict[str, List[Dic
                 """
                 params.append(limit)
                 cur.execute(query_sql, params)
-
-            rows = cur.fetchall()
+                keyword_results = cur.fetchall()
     finally:
         put_conn(conn)
+
+    # Merge and deduplicate (keyword results take priority)
+    seen_ids = set()
+    merged = []
+    for row in keyword_results:
+        if row["id"] not in seen_ids:
+            seen_ids.add(row["id"])
+            merged.append(row)
+    for row in semantic_results:
+        if row["id"] not in seen_ids:
+            seen_ids.add(row["id"])
+            merged.append(row)
+
+    # Sort combined results chronologically
+    merged.sort(key=lambda r: r["start_ms"])
 
     results = [
         {
@@ -121,7 +165,7 @@ def search_chunks(session_id: str, payload: SearchRequest) -> Dict[str, List[Dic
             "is_bookmarked": row["is_bookmarked"],
             "speaker": row.get("speaker"),
         }
-        for row in rows
+        for row in merged
     ]
 
     return {"results": results}
@@ -167,6 +211,13 @@ def update_chunk(chunk_id: str, payload: ChunkUpdateRequest) -> ChunkResponse:
     if "is_bookmarked" in updates:
         set_clauses.append("is_bookmarked = %s")
         values.append(updates["is_bookmarked"])
+
+    # Re-embed if text changed
+    if "text" in updates and updates["text"] is not None and not DISABLE_SEMANTIC_SEARCH:
+        new_embedding = embed_text(updates["text"])
+        if new_embedding is not None:
+            set_clauses.append("embedding = %s::vector")
+            values.append(str(new_embedding))
 
     values.append(chunk_id)
 
