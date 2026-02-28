@@ -53,6 +53,7 @@ Search is the foundation. The goal is to extract insights from team communicatio
 
 **Search & Navigation:**
 - ✅ **Keyword search** - Postgres full-text search (tsvector + GIN), searches both transcript and notes
+- ✅ **Semantic search** - Vector similarity via sentence-transformers + pgvector (hybrid with keyword search)
 - ✅ **Time range filtering** - Filter chunks by game time (MM:SS format)
 - ✅ **Bookmark filtering** - Filter to show only bookmarked chunks via "Show bookmarked only" toggle
 - ✅ **Embedded YouTube player** - Click timestamps to seek player instantly
@@ -119,6 +120,8 @@ TRANSCRIBE_DEVICE=cuda  # or 'cpu' if no GPU
 DISABLE_LOL_NORMALIZE=0
 DISABLE_FUZZY_CORRECT=0
 DISABLE_AUDIO_DENOISE=0
+DISABLE_SEMANTIC_SEARCH=0
+SEMANTIC_SEARCH_THRESHOLD=0.5
 HF_TOKEN=hf_your_token_here  # HuggingFace token for speaker diarization
 # Postgres defaults (localhost:5432/recall) match docker-compose.yml
 ```
@@ -155,9 +158,9 @@ Frontend: http://localhost:5173
 
 ## Technical Stack
 
-- **Backend:** FastAPI (Python), Postgres with tsvector full-text search, psycopg2, whisperX (transcription + alignment + diarization), ffmpeg, RapidFuzz
+- **Backend:** FastAPI (Python), Postgres with tsvector full-text search + pgvector semantic search, psycopg2, whisperX (transcription + alignment + diarization), sentence-transformers, ffmpeg, RapidFuzz
 - **Frontend:** React + Vite
-- **Database:** Postgres (via Docker Compose), psycopg2 connection pool, no ORM
+- **Database:** Postgres (via Docker Compose) with pgvector extension, psycopg2 connection pool, no ORM
 - **Environment:** WSL2, GPU-accelerated (CUDA 12.9), local-first (no cloud)
 - **Data:** Sessions/chunks in Postgres, uploaded media/audio in `backend/data/`
 
@@ -195,8 +198,9 @@ vodcomms/
 │   │   ├── models.py        # Pydantic request/response schemas
 │   │   ├── database.py      # Postgres connection pool and queries
 │   │   ├── routers/         # API endpoints (sessions, chunks, media)
-│   │   └── services/        # Business logic (audio, transcription, text_processing)
+│   │   └── services/        # Business logic (audio, transcription, text_processing, embedding)
 │   ├── term_bank.json       # League-specific vocabulary (305 terms)
+│   ├── scripts/             # Utility scripts (backfill_embeddings)
 │   ├── requirements.txt     # Python dependencies
 │   ├── data/                # Uploaded media + extracted audio
 │   └── .env.example         # Environment variables template
@@ -218,7 +222,7 @@ vodcomms/
 ## Roadmap
 
 **MVP 1.0 (✅ Complete):** Full local tool with search, transcription, time filtering, bookmarks, and annotations
-**MVP 1.5 (Next):** Speaker diarization frontend UI, LLM-powered highlights, semantic search, multi-session search
+**MVP 1.5 (Next):** Speaker diarization frontend UI, LLM-powered highlights, multi-session search
 **MVP 2.0 (Future):** Production SaaS with teams, cloud hosting, fine-tuned models, live transcription
 
 See [PRODUCT.md](docs/PRODUCT.md) for detailed roadmap and feature priorities.
@@ -232,3 +236,4 @@ See [PRODUCT.md](docs/PRODUCT.md) for detailed roadmap and feature priorities.
 - **FastAPI**
 - **React + Vite**
 - **RapidFuzz**
+- **sentence-transformers** + **pgvector**

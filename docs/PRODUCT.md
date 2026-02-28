@@ -87,7 +87,7 @@ Most VOD tools parse **game events** (kills, objectives, gold). RECALL.GG parses
   - Bookmarked chunks show ⭐ even when collapsed
 
 ### Technical Stack
-- **Backend:** FastAPI (Python), Postgres with tsvector full-text search, psycopg2, whisperX (whisper + alignment + diarization), ffmpeg, RapidFuzz
+- **Backend:** FastAPI (Python), Postgres with tsvector full-text search + pgvector semantic search, psycopg2, whisperX (whisper + alignment + diarization), sentence-transformers, ffmpeg, RapidFuzz
   - Modular structure: routers (API endpoints), services (business logic), database (connection pool + queries)
 - **Frontend:** React + Vite, dark theme with purple accents (Linear/Vercel aesthetic)
   - Component-based architecture with custom hooks and CSS modules
@@ -128,9 +128,12 @@ Most VOD tools parse **game events** (kills, objectives, gold). RECALL.GG parses
   - Enables filtered views: "show me all macro discussion"
 
 ### Advanced Search
-- **Semantic search** - Search by concept, not just keywords
-  - Use embeddings to find "macro mistakes" or "shotcalling confusion"
-  - Handles synonyms and related concepts
+- ✓ **Semantic search** - Search by concept, not just keywords
+  - Uses sentence-transformers (all-MiniLM-L6-v2) + pgvector for vector similarity
+  - Hybrid search: keyword results + semantic results, deduplicated, chronological
+  - Embeddings generated at transcription time and on chunk text edit
+  - Cosine distance threshold configurable via SEMANTIC_SEARCH_THRESHOLD (default 0.5)
+  - Backfill script for existing chunks: `python -m scripts.backfill_embeddings`
 - **Multi-session search** - "Find all Baron calls across last 5 scrims"
 - **Session comparison** - Compare themes/patterns across multiple sessions
 - **Saved searches** - Store frequent queries for one-click access
@@ -236,7 +239,7 @@ Most VOD tools parse **game events** (kills, objectives, gold). RECALL.GG parses
 ### MVP 1.5 Feature Priority (Based on Coach Feedback)
 1. Speaker diarization **frontend UI** (backend diarization is implemented)
 2. Top moments LLM (if coaches say "too many chunks to review")
-3. Semantic search (if coaches say "keyword search misses things")
+3. ✓ Semantic search (implemented: sentence-transformers + pgvector hybrid search)
 4. Timeline visualization (if coaches say "hard to see patterns")
 5. Intensity detection (if coaches say "need to find teamfight comms faster")
 
