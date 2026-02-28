@@ -264,6 +264,12 @@
   box-shadow: 0 0 10px rgba(124, 58, 237, 0.25);
 }
 
+.speakerLabel {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-tertiary);
+}
+
 .chunkHeaderRight {
   display: flex;
   align-items: center;

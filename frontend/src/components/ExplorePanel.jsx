@@ -421,6 +421,11 @@ export const ExplorePanel = ({
                     <span>{formatters.formatTime(chunk.end_ms)}</span>
                   </div>
                 )}
+                {chunk.speaker && (
+                  <span className={styles.speakerLabel}>
+                    Speaker {parseInt(chunk.speaker.replace('SPEAKER_', ''), 10) + 1}
+                  </span>
+                )}
                 <div className={styles.chunkHeaderRight}>
                   {youtubeLink && (
                     <button
