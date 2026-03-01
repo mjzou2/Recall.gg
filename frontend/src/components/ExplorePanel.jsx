@@ -55,7 +55,7 @@ export const ExplorePanel = ({
   const [editingTextChunkId, setEditingTextChunkId] = useState(null)
   const [chunkText, setChunkText] = useState('')
 
-  const canSearch = Boolean(sessionId)
+  const canSearch = true
 
   // Reset page index when chunks change
   useEffect(() => {
@@ -66,13 +66,11 @@ export const ExplorePanel = ({
   }, [chunks.length, pageIndex])
 
   const handleSearch = async () => {
-    if (!sessionId) return
-
     const trimmed = searchQuery.trim()
     const startTimeInput = startTime.trim()
     const endTimeInput = endTime.trim()
 
-    // If no filters provided, reset to all chunks
+    // If no filters provided, reset
     if (!trimmed && !startTimeInput && !endTimeInput && !bookmarkedOnly) {
       setSearchQuery('')
       setStartTime('')
@@ -82,11 +80,12 @@ export const ExplorePanel = ({
       setLastQuery('')
       setLastTimeRange('')
       setTimeRangeError('')
-      // Reset chunk views
       setPageIndex(0)
       setExpandedChunkIds(new Set())
-      // Reload session to get all chunks
-      await onReloadSession(sessionId)
+      // Reload session chunks if a session is selected
+      if (sessionId) {
+        await onReloadSession(sessionId)
+      }
       return
     }
 
@@ -112,7 +111,7 @@ export const ExplorePanel = ({
     setTimeRangeError('')
 
     try {
-      await onSearch(sessionId, {
+      await onSearch(sessionId || null, {
         query: trimmed,
         limit: 50,
         start_time_ms: startMs,
@@ -151,6 +150,9 @@ export const ExplorePanel = ({
 
     if (sessionId) {
       await onReloadSession(sessionId)
+    } else {
+      // No session — clear results via empty search
+      await onSearch(null, { query: '' })
     }
   }
 
@@ -182,10 +184,8 @@ export const ExplorePanel = ({
     if (onTimestampClick) {
       onTimestampClick(chunk)
     } else {
-      const youtubeLink = formatters.buildYoutubeUrlWithTimestamp(
-        sessionDetails?.youtube_url,
-        chunk.start_ms
-      )
+      const url = chunk.youtube_url || sessionDetails?.youtube_url
+      const youtubeLink = formatters.buildYoutubeUrlWithTimestamp(url, chunk.start_ms)
       if (youtubeLink) {
         window.open(youtubeLink, '_blank')
       }
@@ -310,46 +310,43 @@ export const ExplorePanel = ({
               Clear
             </button>
           </div>
-          {sessionId && (
-            <>
-              <label className={styles.bookmarkFilterLabel}>
-                <input
-                  type="checkbox"
-                  checked={bookmarkedOnly}
-                  onChange={(e) => setBookmarkedOnly(e.target.checked)}
-                  disabled={!canSearch}
-                />
-                <span>Show bookmarked only</span>
-              </label>
-              <span className={styles.searchStatus}>
-                {isSearching ? (
-                  <>
-                    Results: {chunks.length}
-                    {lastQuery && ` (${lastQuery})`}
-                    {lastTimeRange && ` (${lastTimeRange})`}
-                  </>
-                ) : (
-                  `${chunks.length} chunks`
-                )}
-              </span>
-            </>
+          <label className={styles.bookmarkFilterLabel}>
+            <input
+              type="checkbox"
+              checked={bookmarkedOnly}
+              onChange={(e) => setBookmarkedOnly(e.target.checked)}
+            />
+            <span>Show bookmarked only</span>
+          </label>
+          {(sessionId || isSearching) && (
+            <span className={styles.searchStatus}>
+              {isSearching ? (
+                <>
+                  Results: {chunks.length}
+                  {lastQuery && ` (${lastQuery})`}
+                  {lastTimeRange && ` (${lastTimeRange})`}
+                </>
+              ) : (
+                `${chunks.length} chunks`
+              )}
+            </span>
           )}
         </div>
         {timeRangeError && (
           <span className="hint danger">{timeRangeError}</span>
         )}
-        {!canSearch && (
-          <span className="hint">Select a session to search</span>
-        )}
       </div>
 
-      {!sessionId && (
-        <p className="hint">Select a session to view chunks.</p>
+      {!sessionId && chunks.length === 0 && !isSearching && (
+        <p className="hint">Search across all sessions, or select a session to view its chunks.</p>
       )}
-      {sessionId && chunks.length === 0 && (
+      {chunks.length === 0 && isSearching && (
+        <p className="hint">No chunks found. Try different search terms.</p>
+      )}
+      {sessionId && chunks.length === 0 && !isSearching && (
         <p className="hint">No chunks found. Check the filters or process the uploaded file.</p>
       )}
-      {sessionId && chunks.length > 0 && (
+      {chunks.length > 0 && (
         <div className={styles.pagination}>
           <div className="actions">
             {sessionDetails?.youtube_url && (
@@ -393,8 +390,9 @@ export const ExplorePanel = ({
             `${chunk.start_ms}-${chunk.end_ms}-${chunk.text?.length ?? 0}`
           const isExpanded = expandedChunkIds.has(chunkKey)
           const previewText = formatters.getPreviewText(chunk.text || '')
+          const chunkVideoUrl = chunk.youtube_url || sessionDetails?.youtube_url
           const youtubeLink = formatters.buildYoutubeUrlWithTimestamp(
-            sessionDetails?.youtube_url,
+            chunkVideoUrl,
             chunk.start_ms
           )
           return (
@@ -404,7 +402,7 @@ export const ExplorePanel = ({
               className={`${styles.chunk} ${chunkKey === activeChunkId ? styles.active : ''}`}
             >
               <div className={styles.chunkHeader}>
-                {sessionDetails?.youtube_url ? (
+                {chunkVideoUrl ? (
                   <button
                     type="button"
                     className={`${styles.chunkTimes} ${styles.chunkTimesLink}`}

@@ -42,13 +42,15 @@ function App() {
     activeChunkId,
     autoScrollEnabled,
     setAutoScrollEnabled,
+    currentVideoUrl,
+    loadVideo,
   } = useYouTubePlayer(sessionDetails, chunks, pageIndex, setPageIndex)
 
   const handleTimestampClick = (chunk) => {
-    if (youtubePlayer && youtubePlayer.seekTo) {
-      const seconds = Math.floor(chunk.start_ms / 1000)
-      youtubePlayer.seekTo(seconds, true)
-    }
+    const url = chunk.youtube_url || sessionDetails?.youtube_url
+    if (!url) return
+    const seconds = Math.floor(chunk.start_ms / 1000)
+    loadVideo(url, seconds)
   }
 
   return (
@@ -119,8 +121,7 @@ function App() {
 
         <div className="main-content">
           <YouTubePlayer
-            videoUrl={sessionDetails?.youtube_url}
-            onPlayerReady={() => {}}
+            videoUrl={currentVideoUrl || sessionDetails?.youtube_url}
             hasSession={Boolean(sessionId)}
           />
         </div>

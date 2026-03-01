@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
 import { extractYoutubeVideoId } from '../utils/formatters'
 import { PAGE_SIZE } from '../utils/api'
 
@@ -16,10 +16,17 @@ export const useYouTubePlayer = (sessionDetails, chunks, pageIndex, setPageIndex
   const [isYoutubeApiReady, setIsYoutubeApiReady] = useState(false)
   const [activeChunkId, setActiveChunkId] = useState(null)
   const [autoScrollEnabled, setAutoScrollEnabled] = useState(true)
+  const [currentVideoUrl, setCurrentVideoUrl] = useState(null)
 
   const chunkListRef = useRef(null)
   const isAutoScrollingRef = useRef(false)
   const lastScrollTopRef = useRef(0)
+  const pendingSeekRef = useRef(null)
+
+  // Sync currentVideoUrl with session details when session changes
+  useEffect(() => {
+    setCurrentVideoUrl(sessionDetails?.youtube_url || null)
+  }, [sessionDetails?.youtube_url])
 
   // Load YouTube iframe API
   useEffect(() => {
@@ -43,7 +50,7 @@ export const useYouTubePlayer = (sessionDetails, chunks, pageIndex, setPageIndex
     }
   }, [])
 
-  // Initialize YouTube player when session loads with youtube_url
+  // Initialize YouTube player when currentVideoUrl changes
   useEffect(() => {
     // Clean up existing player
     if (youtubePlayer && youtubePlayer.destroy) {
@@ -56,13 +63,13 @@ export const useYouTubePlayer = (sessionDetails, chunks, pageIndex, setPageIndex
     }
 
     // Check if we have everything needed to create a player
-    if (!sessionDetails?.youtube_url || !isYoutubeApiReady) {
+    if (!currentVideoUrl || !isYoutubeApiReady) {
       return
     }
 
-    const videoId = extractYoutubeVideoId(sessionDetails.youtube_url)
+    const videoId = extractYoutubeVideoId(currentVideoUrl)
     if (!videoId) {
-      console.warn('Could not extract video ID from:', sessionDetails.youtube_url)
+      console.warn('Could not extract video ID from:', currentVideoUrl)
       return
     }
 
@@ -86,11 +93,16 @@ export const useYouTubePlayer = (sessionDetails, chunks, pageIndex, setPageIndex
         events: {
           onReady: (event) => {
             setYoutubePlayer(event.target)
+            // Handle pending seek from loadVideo call
+            if (pendingSeekRef.current !== null) {
+              event.target.seekTo(pendingSeekRef.current, true)
+              pendingSeekRef.current = null
+            }
           },
         },
       })
 
-      // Cleanup on unmount or session change
+      // Cleanup on unmount or video change
       return () => {
         if (player && player.destroy) {
           try {
@@ -103,7 +115,30 @@ export const useYouTubePlayer = (sessionDetails, chunks, pageIndex, setPageIndex
     } catch (err) {
       console.error('Error creating YouTube player:', err)
     }
-  }, [sessionDetails?.youtube_url, isYoutubeApiReady])
+  }, [currentVideoUrl, isYoutubeApiReady])
+
+  // Load a video and seek to a specific time
+  const loadVideo = useCallback((youtubeUrl, seekSeconds) => {
+    if (!youtubeUrl) return
+
+    const newVideoId = extractYoutubeVideoId(youtubeUrl)
+    if (!newVideoId) return
+
+    const currentVideoId = extractYoutubeVideoId(currentVideoUrl)
+
+    if (newVideoId === currentVideoId && youtubePlayer) {
+      // Same video, just seek
+      youtubePlayer.seekTo(seekSeconds, true)
+    } else if (youtubePlayer && youtubePlayer.loadVideoById) {
+      // Different video, player exists — switch video
+      youtubePlayer.loadVideoById({ videoId: newVideoId, startSeconds: seekSeconds })
+      setCurrentVideoUrl(youtubeUrl)
+    } else {
+      // No player yet — set URL to trigger player creation, store pending seek
+      pendingSeekRef.current = seekSeconds
+      setCurrentVideoUrl(youtubeUrl)
+    }
+  }, [currentVideoUrl, youtubePlayer])
 
   // Player position sync - poll current time and highlight active chunk
   useEffect(() => {
@@ -232,5 +267,7 @@ export const useYouTubePlayer = (sessionDetails, chunks, pageIndex, setPageIndex
     activeChunkId,
     autoScrollEnabled,
     setAutoScrollEnabled,
+    currentVideoUrl,
+    loadVideo,
   }
 }

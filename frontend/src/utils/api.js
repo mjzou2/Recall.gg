@@ -89,10 +89,11 @@ export const searchChunks = async (
   sessionId,
   { query, limit = 50, start_time_ms, end_time_ms, is_bookmarked }
 ) => {
-  const res = await fetch(`${API_BASE}/sessions/${sessionId}/search`, {
+  const res = await fetch(`${API_BASE}/search`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
+      session_id: sessionId || null,
       query: query || '',
       limit,
       start_time_ms: start_time_ms || null,

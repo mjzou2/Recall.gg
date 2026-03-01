@@ -34,6 +34,7 @@ class ChunkResponse(BaseModel):
     notes: Optional[str] = None
     is_bookmarked: Optional[int] = 0
     speaker: Optional[str] = None
+    youtube_url: Optional[str] = None
 
 class ChunkUpdateRequest(BaseModel):
     notes: Optional[str] = None
@@ -46,3 +47,4 @@ class SearchRequest(BaseModel):
     start_time_ms: Optional[int] = None
     end_time_ms: Optional[int] = None
     is_bookmarked: Optional[bool] = None
+    session_id: Optional[str] = None

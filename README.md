@@ -56,7 +56,8 @@ Search is the foundation. The goal is to extract insights from team communicatio
 - ✅ **Semantic search** - Vector similarity via sentence-transformers + pgvector (hybrid with keyword search)
 - ✅ **Time range filtering** - Filter chunks by game time (MM:SS format)
 - ✅ **Bookmark filtering** - Filter to show only bookmarked chunks via "Show bookmarked only" toggle
-- ✅ **Embedded YouTube player** - Click timestamps to seek player instantly
+- ✅ **Multi-session search** - Search across all sessions at once when no session is selected; results grouped by session
+- ✅ **Embedded YouTube player** - Click timestamps to seek player instantly; auto-switches videos across sessions
 - ✅ **Player position sync** - Active chunk highlights and auto-scrolls as video plays (toggleable)
 - ✅ **Tab-based sidebar** - Switch between Sessions and Explore (transcript) views
 - ✅ Pagination and chunk expansion (clickable text)
@@ -222,7 +223,7 @@ vodcomms/
 ## Roadmap
 
 **MVP 1.0 (✅ Complete):** Full local tool with search, transcription, time filtering, bookmarks, and annotations
-**MVP 1.5 (Next):** Speaker diarization frontend UI, LLM-powered highlights, multi-session search
+**MVP 1.5 (Next):** Speaker diarization frontend UI, LLM-powered highlights, session comparison
 **MVP 2.0 (Future):** Production SaaS with teams, cloud hosting, fine-tuned models, live transcription
 
 See [PRODUCT.md](docs/PRODUCT.md) for detailed roadmap and feature priorities.

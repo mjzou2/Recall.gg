@@ -134,7 +134,10 @@ Most VOD tools parse **game events** (kills, objectives, gold). RECALL.GG parses
   - Embeddings generated at transcription time and on chunk text edit
   - Cosine distance threshold configurable via SEMANTIC_SEARCH_THRESHOLD (default 0.5)
   - Backfill script for existing chunks: `python -m scripts.backfill_embeddings`
-- **Multi-session search** - "Find all Baron calls across last 5 scrims"
+- ✓ **Multi-session search** - "Find all Baron calls across last 5 scrims"
+  - Search without a session selected queries all chunks across all sessions
+  - Results grouped by session, chronological within each group
+  - Results include youtube_url; player auto-switches videos on timestamp click
 - **Session comparison** - Compare themes/patterns across multiple sessions
 - **Saved searches** - Store frequent queries for one-click access
 

@@ -176,8 +176,6 @@ export const useAppState = () => {
   // Chunk handlers
 
   const searchChunks = async (sessionId, searchParams) => {
-    if (!sessionId) return
-
     setStatus('Searching...')
     setError('')
     try {

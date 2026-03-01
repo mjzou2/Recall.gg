@@ -170,6 +170,179 @@ def search_chunks(session_id: str, payload: SearchRequest) -> Dict[str, List[Dic
 
     return {"results": results}
 
+
+@router.post("/search")
+def search_all_chunks(payload: SearchRequest) -> Dict[str, List[Dict]]:
+    """Search chunks across all sessions or a specific session. Includes youtube_url from session."""
+    session_id = payload.session_id
+    if session_id:
+        fetch_session(session_id)  # Validate session exists
+
+    query = payload.query.strip()
+    start_time_ms = payload.start_time_ms
+    end_time_ms = payload.end_time_ms
+    is_bookmarked = payload.is_bookmarked
+    limit = max(0, min(payload.limit, 50))
+
+    # Validate time range
+    if start_time_ms is not None and start_time_ms < 0:
+        raise HTTPException(status_code=400, detail="Start time cannot be negative")
+    if end_time_ms is not None and end_time_ms < 0:
+        raise HTTPException(status_code=400, detail="End time cannot be negative")
+    if start_time_ms is not None and end_time_ms is not None and start_time_ms >= end_time_ms:
+        raise HTTPException(status_code=400, detail="End time must be after start time")
+
+    # Handle one-sided ranges
+    if start_time_ms is not None and end_time_ms is None:
+        end_time_ms = 999999999999
+    if end_time_ms is not None and start_time_ms is None:
+        start_time_ms = 0
+
+    # Return empty if no filters provided
+    if not query and start_time_ms is None and end_time_ms is None and is_bookmarked is None:
+        return {"results": []}
+
+    if limit == 0:
+        return {"results": []}
+
+    select_cols = "c.id, c.session_id, c.start_ms, c.end_ms, c.text, c.notes, c.is_bookmarked, c.speaker, s.youtube_url"
+    from_clause = "chunks c JOIN sessions s ON c.session_id = s.id"
+
+    conn = get_conn()
+    try:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            keyword_results = []
+            semantic_results = []
+
+            if query:
+                tokens = [token for token in query.split() if token]
+                sanitized_tokens = [re.sub(r"['\"\(\)]", "", token) for token in tokens if token]
+                tsquery_parts = [f"{token}:*" for token in sanitized_tokens if token]
+                tsquery_str = " & ".join(tsquery_parts)
+
+                where_clauses = ["c.tsv @@ to_tsquery('english', %s)"]
+                params: list = [tsquery_str]
+
+                if session_id:
+                    where_clauses.append("c.session_id = %s")
+                    params.append(session_id)
+
+                if start_time_ms is not None:
+                    where_clauses.append("c.start_ms < %s")
+                    where_clauses.append("c.end_ms > %s")
+                    params.extend([end_time_ms, start_time_ms])
+
+                if is_bookmarked is True:
+                    where_clauses.append("c.is_bookmarked = 1")
+
+                keyword_sql = f"""
+                    SELECT {select_cols}
+                    FROM {from_clause}
+                    WHERE {' AND '.join(where_clauses)}
+                    ORDER BY c.start_ms
+                    LIMIT %s
+                """
+                params.append(limit)
+                cur.execute(keyword_sql, params)
+                keyword_results = cur.fetchall()
+
+                # Semantic search (additive)
+                if not DISABLE_SEMANTIC_SEARCH:
+                    query_embedding = embed_text(query)
+                    if query_embedding is not None:
+                        sem_where = ["c.embedding IS NOT NULL",
+                                     "c.embedding <=> %s::vector < %s"]
+                        query_emb_str = str(query_embedding)
+                        sem_params: list = [query_emb_str, SEMANTIC_SEARCH_THRESHOLD]
+
+                        if session_id:
+                            sem_where.append("c.session_id = %s")
+                            sem_params.append(session_id)
+
+                        if start_time_ms is not None:
+                            sem_where.append("c.start_ms < %s")
+                            sem_where.append("c.end_ms > %s")
+                            sem_params.extend([end_time_ms, start_time_ms])
+
+                        if is_bookmarked is True:
+                            sem_where.append("c.is_bookmarked = 1")
+
+                        sem_sql = f"""
+                            SELECT {select_cols}
+                            FROM {from_clause}
+                            WHERE {' AND '.join(sem_where)}
+                            ORDER BY c.embedding <=> %s::vector
+                            LIMIT %s
+                        """
+                        sem_params.append(query_emb_str)
+                        sem_params.append(20)
+                        cur.execute(sem_sql, sem_params)
+                        semantic_results = cur.fetchall()
+
+            else:
+                # No query: time-range / bookmark only
+                where_clauses = []
+                params = []
+
+                if session_id:
+                    where_clauses.append("c.session_id = %s")
+                    params.append(session_id)
+
+                if start_time_ms is not None:
+                    where_clauses.append("c.start_ms < %s")
+                    where_clauses.append("c.end_ms > %s")
+                    params.extend([end_time_ms, start_time_ms])
+
+                if is_bookmarked is True:
+                    where_clauses.append("c.is_bookmarked = 1")
+
+                where_str = f"WHERE {' AND '.join(where_clauses)}" if where_clauses else ""
+                query_sql = f"""
+                    SELECT {select_cols}
+                    FROM {from_clause}
+                    {where_str}
+                    ORDER BY c.start_ms
+                    LIMIT %s
+                """
+                params.append(limit)
+                cur.execute(query_sql, params)
+                keyword_results = cur.fetchall()
+    finally:
+        put_conn(conn)
+
+    # Merge and deduplicate (keyword results take priority)
+    seen_ids = set()
+    merged = []
+    for row in keyword_results:
+        if row["id"] not in seen_ids:
+            seen_ids.add(row["id"])
+            merged.append(row)
+    for row in semantic_results:
+        if row["id"] not in seen_ids:
+            seen_ids.add(row["id"])
+            merged.append(row)
+
+    # Sort by session then chronologically within each session
+    merged.sort(key=lambda r: (r["session_id"], r["start_ms"]))
+
+    results = [
+        {
+            "id": row["id"],
+            "session_id": row["session_id"],
+            "start_ms": row["start_ms"],
+            "end_ms": row["end_ms"],
+            "text": row["text"],
+            "notes": row["notes"],
+            "is_bookmarked": row["is_bookmarked"],
+            "speaker": row.get("speaker"),
+            "youtube_url": row.get("youtube_url"),
+        }
+        for row in merged
+    ]
+
+    return {"results": results}
+
+
 @router.patch("/chunks/{chunk_id}", response_model=ChunkResponse)
 def update_chunk(chunk_id: str, payload: ChunkUpdateRequest) -> ChunkResponse:
     """Update a chunk's notes and/or text field."""
