@@ -2,9 +2,6 @@ import gc
 from pathlib import Path
 from typing import Dict, List, Optional
 
-import torch
-import whisperx
-from whisperx.diarize import DiarizationPipeline
 from fastapi import HTTPException
 
 from app.config import (
@@ -36,6 +33,8 @@ def _get_compute_type() -> str:
 
 def _unload_model(model) -> None:
     """Delete a model and free GPU memory."""
+    import torch
+
     del model
     gc.collect()
     if torch.cuda.is_available():
@@ -100,6 +99,9 @@ def transcribe_audio(audio_path: Path) -> List[Dict]:
     )
 
     try:
+        import whisperx
+        from whisperx.diarize import DiarizationPipeline
+
         # Step 1: Load audio
         audio = whisperx.load_audio(str(audio_path))
 
