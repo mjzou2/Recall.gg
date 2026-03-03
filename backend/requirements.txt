@@ -12,9 +12,14 @@ python-dotenv
 
 # Audio transcription (pulls in torch, numpy, transformers, etc.)
 whisperx>=3.1.0
+# Pin torch to prevent surprise upgrades; whisperx/pyannote-audio require >=2.8.0
+torch>=2.8.0,<2.9
 
 # Embeddings
 sentence-transformers
+
+# LLM analysis
+anthropic
 
 # Text processing
 rapidfuzz

@@ -6,10 +6,11 @@ from typing import Dict
 
 from fastapi import APIRouter, File, HTTPException, UploadFile
 
-from app.config import UPLOAD_DIR, DISABLE_SEMANTIC_SEARCH
+from app.config import UPLOAD_DIR, DISABLE_SEMANTIC_SEARCH, DISABLE_LLM_ANALYSIS
 from app.database import get_conn, put_conn, fetch_session, fetch_chunks
 from app.services.audio import extract_audio
 from app.services.embedding import embed_texts
+from app.services.llm import analyze_session
 from app.services.transcription import transcribe_audio, merge_segments
 
 
@@ -98,10 +99,12 @@ def process_media(session_id: str) -> Dict:
         embeddings = None
         if not DISABLE_SEMANTIC_SEARCH and chunks:
             print("Processing: embedding chunks for semantic search")
+            embed_start = time.time()
             chunk_texts = [chunk["text"] for chunk in chunks]
             embeddings = embed_texts(chunk_texts)
+            embed_elapsed = time.time() - embed_start
             if embeddings:
-                print(f"Embedded {len(embeddings)} chunks")
+                print(f"Embedded {len(embeddings)} chunks in {embed_elapsed:.1f}s")
             else:
                 print("Warning: embedding failed, chunks will have NULL embeddings")
 
@@ -123,6 +126,7 @@ def process_media(session_id: str) -> Dict:
         # Calculate processing duration
         duration_seconds = int(time.time() - start_time)
 
+        # Insert chunks into database
         conn = get_conn()
         try:
             with conn.cursor() as cur:
@@ -135,6 +139,59 @@ def process_media(session_id: str) -> Dict:
                             """,
                             row,
                         )
+            conn.commit()
+        finally:
+            put_conn(conn)
+
+        # LLM analysis (fault-tolerant, after chunks committed)
+        if not DISABLE_LLM_ANALYSIS and chunk_rows:
+            print("Processing: running LLM analysis")
+            llm_start = time.time()
+            # Build chunk dicts from chunk_rows tuples
+            # Format: (id, session_id, start_ms, end_ms, text, speaker, embedding)
+            llm_chunks = [
+                {"id": row[0], "start_ms": row[2], "end_ms": row[3],
+                 "text": row[4], "speaker": row[5]}
+                for row in chunk_rows
+            ]
+            duration_ms = max(row[3] for row in chunk_rows)  # max end_ms
+            try:
+                analysis = analyze_session(llm_chunks, duration_ms)
+                llm_elapsed = time.time() - llm_start
+                if analysis:
+                    print(f"LLM analysis complete in {llm_elapsed:.1f}s: "
+                          f"{len(analysis['tags'])} tags")
+                    conn = get_conn()
+                    try:
+                        with conn.cursor() as cur:
+                            # Set session notes to summary
+                            cur.execute(
+                                "UPDATE sessions SET notes = %s WHERE id = %s",
+                                (analysis["summary"], session_id),
+                            )
+                            # Append tags to chunk notes
+                            for tag in analysis["tags"]:
+                                tag_text = f"[{tag['type']}] {tag['label']}"
+                                cur.execute(
+                                    """UPDATE chunks SET notes =
+                                       CASE WHEN notes IS NULL OR notes = '' THEN %s
+                                            ELSE notes || E'\\n' || %s
+                                       END
+                                       WHERE id = %s""",
+                                    (tag_text, tag_text, tag["chunk_id"]),
+                                )
+                        conn.commit()
+                    finally:
+                        put_conn(conn)
+                else:
+                    print(f"LLM analysis returned no results ({llm_elapsed:.1f}s)")
+            except Exception as llm_exc:
+                print(f"LLM analysis failed (non-fatal): {llm_exc}")
+
+        # Update session status to ready
+        conn = get_conn()
+        try:
+            with conn.cursor() as cur:
                 cur.execute(
                     "UPDATE sessions SET status = 'ready', audio_path = %s, processing_duration_seconds = %s WHERE id = %s",
                     (str(audio_path), duration_seconds, session_id),

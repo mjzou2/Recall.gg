@@ -21,6 +21,7 @@ PG_DBNAME = os.environ.get("PG_DBNAME", "recall")
 # Whisper model configuration
 WHISPER_MODEL = os.environ.get("WHISPER_MODEL", "base.en")
 TRANSCRIBE_DEVICE = os.environ.get("TRANSCRIBE_DEVICE", "cuda")
+WHISPER_COMPUTE_TYPE = os.environ.get("WHISPER_COMPUTE_TYPE", "")  # auto, float16, int8, etc. Empty = auto
 
 # Feature flags
 DISABLE_LOL_NORMALIZE = os.environ.get("DISABLE_LOL_NORMALIZE", "0") == "1"
@@ -28,6 +29,8 @@ DISABLE_FUZZY_CORRECT = os.environ.get("DISABLE_FUZZY_CORRECT", "0") == "1"
 DISABLE_AUDIO_DENOISE = os.environ.get("DISABLE_AUDIO_DENOISE", "0") == "1"
 DISABLE_SEMANTIC_SEARCH = os.environ.get("DISABLE_SEMANTIC_SEARCH", "0") == "1"
 SEMANTIC_SEARCH_THRESHOLD = float(os.environ.get("SEMANTIC_SEARCH_THRESHOLD", "0.5"))
+DISABLE_LLM_ANALYSIS = os.environ.get("DISABLE_LLM_ANALYSIS", "0") == "1"
+ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 
 # WhisperX configuration
 HF_TOKEN = os.environ.get("HF_TOKEN", "")

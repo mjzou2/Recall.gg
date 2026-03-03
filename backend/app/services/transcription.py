@@ -7,6 +7,7 @@ from fastapi import HTTPException
 from app.config import (
     WHISPER_MODEL,
     TRANSCRIBE_DEVICE,
+    WHISPER_COMPUTE_TYPE,
     DISABLE_LOL_NORMALIZE,
     DISABLE_FUZZY_CORRECT,
     HF_TOKEN,
@@ -28,6 +29,8 @@ def _get_device() -> str:
 
 
 def _get_compute_type() -> str:
+    if WHISPER_COMPUTE_TYPE:
+        return WHISPER_COMPUTE_TYPE
     return "int8" if _get_device() == "cpu" else "float16"
 
 
