@@ -164,10 +164,22 @@ def process_media(session_id: str) -> Dict:
                     conn = get_conn()
                     try:
                         with conn.cursor() as cur:
-                            # Set session notes to summary
+                            # Format scorecard as session notes
+                            score_labels = {
+                                "summoner_tracking": "Summoner Tracking",
+                                "objective_setup": "Objective Setup",
+                                "teamfight_comms": "Teamfight Comms",
+                                "shotcall_clarity": "Shotcall Clarity",
+                                "map_awareness": "Map Awareness",
+                            }
+                            lines = ["SCORECARD"]
+                            for key, label in score_labels.items():
+                                s = analysis["scores"].get(key, {}).get("score", "?")
+                                lines.append(f"{label}: {s}/10")
+                            scorecard_text = "\n".join(lines)
                             cur.execute(
                                 "UPDATE sessions SET notes = %s WHERE id = %s",
-                                (analysis["summary"], session_id),
+                                (scorecard_text, session_id),
                             )
                             # Append tags to chunk notes
                             for tag in analysis["tags"]:

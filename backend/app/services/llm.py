@@ -1,8 +1,8 @@
-"""LLM analysis service for session summaries and chunk tagging.
+"""LLM analysis service for session scorecard and chunk tagging.
 
-Uses Claude Haiku to analyze transcribed scrim comms. Generates a session
-summary and per-chunk tags for notable moments (objective calls, shotcalls,
-disagreements, good comms, silences, tilt, info sharing).
+Uses Claude Haiku to analyze transcribed scrim comms. Generates a scorecard
+(five comms categories rated 1-10) and per-chunk tags for notable moments
+(objective calls, shotcalls, disagreements, silences, tilt).
 
 Fault-tolerant: returns None on any failure, logs warning. Never blocks
 the processing pipeline.
@@ -21,6 +21,11 @@ _client_init_attempted = False
 
 MODEL = "claude-haiku-4-5-20251001"
 MAX_TOKENS = 16384
+
+VALID_SCORE_CATEGORIES = {
+    "summoner_tracking", "objective_setup", "teamfight_comms",
+    "shotcall_clarity", "map_awareness",
+}
 
 VALID_TAG_TYPES = {
     "objective_call", "shotcall", "disagreement",
@@ -143,7 +148,8 @@ def analyze_session(chunks: List[Dict], duration_ms: int) -> Optional[Dict]:
         duration_ms: Total session duration in milliseconds
 
     Returns:
-        {"summary": str, "tags": [{"chunk_id": str, "type": str, "label": str}]}
+        {"scores": {category: {"score": int, "chunk_ids": [str]}},
+         "tags": [{"chunk_id": str, "type": str, "label": str}]}
         or None on failure.
     """
     if not chunks:
@@ -181,15 +187,33 @@ def analyze_session(chunks: List[Dict], duration_ms: int) -> Optional[Dict]:
         if not isinstance(result, dict):
             logger.warning("LLM response is not a dict: %s", type(result))
             return None
-        if "summary" not in result or "tags" not in result:
-            logger.warning("LLM response missing required keys: %s", list(result.keys()))
+        if "scores" not in result or not isinstance(result["scores"], dict):
+            logger.warning("LLM response missing 'scores' dict: %s", list(result.keys()))
             return None
-        if not isinstance(result["tags"], list):
-            logger.warning("LLM response 'tags' is not a list")
+        if "tags" not in result or not isinstance(result["tags"], list):
+            logger.warning("LLM response missing 'tags' list: %s", list(result.keys()))
             return None
 
-        # Validate tags against actual chunk IDs and allowed types
+        # Validate scores: each category must have score (1-10) and chunk_ids list
         chunk_ids = {c["id"] for c in chunks}
+        valid_scores = {}
+        for cat in VALID_SCORE_CATEGORIES:
+            entry = result["scores"].get(cat)
+            if not isinstance(entry, dict):
+                logger.warning("Score category '%s' missing or not a dict", cat)
+                valid_scores[cat] = {"score": 5, "chunk_ids": []}
+                continue
+            score = entry.get("score")
+            if not isinstance(score, int) or score < 1 or score > 10:
+                logger.warning("Score '%s' has invalid score: %s", cat, score)
+                score = max(1, min(10, int(score))) if isinstance(score, (int, float)) else 5
+            cids = entry.get("chunk_ids", [])
+            if not isinstance(cids, list):
+                cids = []
+            valid_cids = [cid for cid in cids if cid in chunk_ids]
+            valid_scores[cat] = {"score": score, "chunk_ids": valid_cids}
+
+        # Validate tags against actual chunk IDs and allowed types
         valid_tags = []
         for tag in result["tags"]:
             if (isinstance(tag, dict)
@@ -203,14 +227,13 @@ def analyze_session(chunks: List[Dict], duration_ms: int) -> Optional[Dict]:
                     "label": tag["label"].strip(),
                 })
 
-        summary = str(result["summary"]).strip()
-
         logger.info(
-            "LLM analysis complete: summary=%d chars, tags=%d/%d valid",
-            len(summary), len(valid_tags), len(result["tags"]),
+            "LLM analysis complete: scores=%s, tags=%d/%d valid",
+            {k: v["score"] for k, v in valid_scores.items()},
+            len(valid_tags), len(result["tags"]),
         )
 
-        return {"summary": summary, "tags": valid_tags}
+        return {"scores": valid_scores, "tags": valid_tags}
 
     except json.JSONDecodeError as exc:
         logger.warning("LLM response is not valid JSON: %s", exc)

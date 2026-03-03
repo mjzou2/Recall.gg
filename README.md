@@ -26,8 +26,8 @@ Watch the 4-minute walkthrough:
 ## The Vision (Next)
 
 Once you can search your comms, you can analyze them:
+- **Auto-generated session summaries and chunk tags** via Claude Haiku (implemented)
 - Track how often your team communicates during objective fights
-- Surface the most critical moments automatically with LLM-powered analysis
 - Visualize communication intensity across the game timeline
 - Identify patterns in decision-making and shotcalling
 
@@ -44,12 +44,17 @@ Search is the foundation. The goal is to extract insights from team communicatio
 **Media Processing:**
 - ✅ Upload audio (mp3, m4a, wav) or video (mp4, mkv, avi)
 - ✅ Automatic audio extraction from video files (ffmpeg) with light denoising
-- ✅ GPU-accelerated transcription (whisperX + CUDA) with word-level alignment
+- ✅ GPU-accelerated transcription (whisperX + CUDA, large-v3/int8) with word-level alignment
 - ✅ **Speaker diarization** via pyannote (identifies who said what)
 - ✅ **League-specific term bank** (305 terms: champions, objectives, items, locations, mechanics)
 - ✅ Post-normalization for common mishears (19 regex rules: apostrophe champions, abbreviations, etc.)
 - ✅ Fuzzy post-processing with RapidFuzz (auto-corrects against term bank, score_cutoff=82)
 - ✅ ~60% base accuracy on League terms, targeting 70-80% with fuzzy correction
+
+**LLM Analysis (Claude Haiku):**
+- ✅ **Session summaries** - Auto-generated 2-4 sentence summary covering shotcalling, objectives, and breakdowns
+- ✅ **Per-chunk tags** - Auto-tags notable moments: objective calls, shotcalls, disagreements, good comms, silences, tilt, info sharing
+- ✅ Fault-tolerant: failures never block processing (controlled by ANTHROPIC_API_KEY + DISABLE_LLM_ANALYSIS)
 
 **Search & Navigation:**
 - ✅ **Keyword search** - Postgres full-text search (tsvector + GIN), searches both transcript and notes
@@ -116,13 +121,17 @@ pip install -r requirements.txt
 
 **3. Create `.env` file in `backend/`:**
 ```bash
-WHISPER_MODEL=small.en
+WHISPER_MODEL=large-v3
 TRANSCRIBE_DEVICE=cuda  # or 'cpu' if no GPU
+WHISPER_COMPUTE_TYPE=int8  # int8 for large-v3 on 8GB GPUs, float16 for >=12GB
+WHISPERX_BATCH_SIZE=4  # 4 for large-v3/int8 on 8GB, 16 for small.en
 DISABLE_LOL_NORMALIZE=0
 DISABLE_FUZZY_CORRECT=0
 DISABLE_AUDIO_DENOISE=0
 DISABLE_SEMANTIC_SEARCH=0
 SEMANTIC_SEARCH_THRESHOLD=0.5
+DISABLE_LLM_ANALYSIS=0
+ANTHROPIC_API_KEY=  # Anthropic API key for Claude Haiku session analysis (empty = skip)
 HF_TOKEN=hf_your_token_here  # HuggingFace token for speaker diarization
 # Postgres defaults (localhost:5432/recall) match docker-compose.yml
 ```
@@ -159,7 +168,7 @@ Frontend: http://localhost:5173
 
 ## Technical Stack
 
-- **Backend:** FastAPI (Python), Postgres with tsvector full-text search + pgvector semantic search, psycopg2, whisperX (transcription + alignment + diarization), sentence-transformers, ffmpeg, RapidFuzz
+- **Backend:** FastAPI (Python), Postgres with tsvector full-text search + pgvector semantic search, psycopg2, whisperX (transcription + alignment + diarization), sentence-transformers, Claude Haiku (LLM analysis), ffmpeg, RapidFuzz
 - **Frontend:** React + Vite
 - **Database:** Postgres (via Docker Compose) with pgvector extension, psycopg2 connection pool, no ORM
 - **Environment:** WSL2, GPU-accelerated (CUDA 12.9), local-first (no cloud)
@@ -169,7 +178,7 @@ Frontend: http://localhost:5173
 
 ## Transcription Accuracy
 
-**Current performance (small.en + term bank + fuzzy correction):**
+**Current performance (large-v3/int8 + term bank + fuzzy correction):**
 - ~60% base accuracy on League-specific terms, targeting 70-80% with post-processing
 - ~5 minutes processing per hour of audio (GPU)
 - 19 regex rules auto-correct common mishears (harold→herald, word→ward, apostrophe champions, etc.)
@@ -199,7 +208,7 @@ vodcomms/
 │   │   ├── models.py        # Pydantic request/response schemas
 │   │   ├── database.py      # Postgres connection pool and queries
 │   │   ├── routers/         # API endpoints (sessions, chunks, media)
-│   │   └── services/        # Business logic (audio, transcription, text_processing, embedding)
+│   │   └── services/        # Business logic (audio, transcription, text_processing, embedding, llm)
 │   ├── term_bank.json       # League-specific vocabulary (305 terms)
 │   ├── scripts/             # Utility scripts (backfill_embeddings)
 │   ├── requirements.txt     # Python dependencies
@@ -222,8 +231,8 @@ vodcomms/
 
 ## Roadmap
 
-**MVP 1.0 (✅ Complete):** Full local tool with search, transcription, time filtering, bookmarks, and annotations
-**MVP 1.5 (Next):** Speaker diarization frontend UI, LLM-powered highlights, session comparison
+**MVP 1.0 (✅ Complete):** Full local tool with search, transcription, time filtering, bookmarks, annotations, and LLM analysis
+**MVP 1.5 (Next):** Speaker diarization frontend UI, intensity detection, session comparison
 **MVP 2.0 (Future):** Production SaaS with teams, cloud hosting, fine-tuned models, live transcription
 
 See [PRODUCT.md](docs/PRODUCT.md) for detailed roadmap and feature priorities.
@@ -238,3 +247,4 @@ See [PRODUCT.md](docs/PRODUCT.md) for detailed roadmap and feature priorities.
 - **React + Vite**
 - **RapidFuzz**
 - **sentence-transformers** + **pgvector**
+- **Anthropic Claude Haiku** (LLM analysis)

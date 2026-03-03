@@ -63,7 +63,7 @@ HOTWORDS = [
 INITIAL_PROMPT = (
     "Okay we need prio mid before drake spawns. Kai'Sa has BORK, Rek'Sai is "
     "topside. They're setting up baron, we need to rotate. Naut no flash."
-    "Zhonya's is up though. Let's crash this wave and group"
+    "Zhonya's is up though. Let's crash this wave and group with tempo"
     "for elder. ADC needs to play safe, they have Kha'Zix in fog."
 )
 

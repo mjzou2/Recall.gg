@@ -36,7 +36,7 @@ Most VOD tools parse **game events** (kills, objectives, gold). RECALL.GG parses
   - ✓ Sequential model loading for VRAM management (8GB GPU compatible)
   - ✓ League-specific term bank (300+ terms: champions, objectives, comms vocabulary)
   - ✓ Contextual initial_prompt + hotwords for domain accuracy
-  - ✓ Model selection (base/small/medium) - currently using small.en
+  - ✓ Model selection (base/small/medium/large) - currently using large-v3 with int8 quantization
   - ✓ Post-normalization for common mishears (19 regex rules: apostrophe champions, abbreviations, etc.)
   - ✓ **Fuzzy post-processing with RapidFuzz** - auto-corrects against term bank (score_cutoff=82)
   - ✓ Achieves ~60% base accuracy on League terms
@@ -87,7 +87,7 @@ Most VOD tools parse **game events** (kills, objectives, gold). RECALL.GG parses
   - Bookmarked chunks show ⭐ even when collapsed
 
 ### Technical Stack
-- **Backend:** FastAPI (Python), Postgres with tsvector full-text search + pgvector semantic search, psycopg2, whisperX (whisper + alignment + diarization), sentence-transformers, ffmpeg, RapidFuzz
+- **Backend:** FastAPI (Python), Postgres with tsvector full-text search + pgvector semantic search, psycopg2, whisperX (whisper + alignment + diarization), sentence-transformers, Claude Haiku (LLM analysis), ffmpeg, RapidFuzz
   - Modular structure: routers (API endpoints), services (business logic), database (connection pool + queries)
 - **Frontend:** React + Vite, dark theme with purple accents (Linear/Vercel aesthetic)
   - Component-based architecture with custom hooks and CSS modules
@@ -117,15 +117,16 @@ Most VOD tools parse **game events** (kills, objectives, gold). RECALL.GG parses
   - Enables searches like "show me everything the jungler said about Baron"
 
 ### Content Intelligence
+- ✓ **LLM analysis via Claude Haiku** - Auto-generate session summary + per-chunk tags
+  - Session summary (2-4 sentences) → stored in sessions.notes, covers shotcalling, objectives, breakdowns
+  - Per-chunk tags → appended to chunks.notes as `[type] label`
+  - Tag types: objective_call, shotcall, disagreement, good_comm, silence, tilt, info_share
+  - System prompt grounded with term bank reference (objectives + locations)
+  - Fault-tolerant: never blocks processing on failure
+  - Controlled by DISABLE_LLM_ANALYSIS flag and ANTHROPIC_API_KEY env var
 - **Intensity detection** - Flag high-energy moments (teamfights, conflicts)
   - Audio features: volume spikes, speech rate, overlapping voices
   - Auto-tag as "high intensity" for quick review
-- **Top moments (LLM-powered)** - Auto-generate 5-10 key timestamps per session
-  - LLM scans chunks, identifies decisions/mistakes/highlights
-  - Saves coaches from reading 200+ chunks manually
-- **Auto-tagging** - LLM classifies chunks by type
-  - Categories: fight, macro, draft, lane, decision, mistake
-  - Enables filtered views: "show me all macro discussion"
 
 ### Advanced Search
 - ✓ **Semantic search** - Search by concept, not just keywords
@@ -241,7 +242,7 @@ Most VOD tools parse **game events** (kills, objectives, gold). RECALL.GG parses
 
 ### MVP 1.5 Feature Priority (Based on Coach Feedback)
 1. Speaker diarization **frontend UI** (backend diarization is implemented)
-2. Top moments LLM (if coaches say "too many chunks to review")
+2. ✓ LLM analysis via Claude Haiku (session summaries + per-chunk tags)
 3. ✓ Semantic search (implemented: sentence-transformers + pgvector hybrid search)
 4. Timeline visualization (if coaches say "hard to see patterns")
 5. Intensity detection (if coaches say "need to find teamfight comms faster")
@@ -252,7 +253,7 @@ Most VOD tools parse **game events** (kills, objectives, gold). RECALL.GG parses
 
 **Transcription Accuracy:**
 - Base Whisper model: ~30% accuracy on League terms
-- Current (small.en + term bank + fuzzy): ~60% base, targeting 70-80% with post-processing
+- Current (large-v3/int8 + term bank + fuzzy): ~60% base, targeting 70-80% with post-processing
 - Overlapping speech and diverse accents reduce accuracy further
 - Fine-tuning could reach 80-90% but requires significant data collection effort
 
