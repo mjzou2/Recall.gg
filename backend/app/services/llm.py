@@ -23,8 +23,8 @@ MODEL = "claude-haiku-4-5-20251001"
 MAX_TOKENS = 16384
 
 VALID_TAG_TYPES = {
-    "objective_call", "shotcall", "disagreement", "good_comm",
-    "silence", "tilt", "info_share",
+    "objective_call", "shotcall", "disagreement",
+    "silence", "tilt",
 }
 
 SYSTEM_PROMPT_TEMPLATE = """\
@@ -36,26 +36,51 @@ REFERENCE - League of Legends terms that appear in scrim comms:
 Objectives: baron, nashor, nash, elder, elder drake, atakhan, dragon, drake, dragon soul, soul, infernal, mountain, ocean, cloud, chemtech, hextech, herald, rift herald, grubs, voidgrubs, scuttle, red buff, blue buff, gromp, krugs, raptors, wolves
 Locations: alcove, banana bush, baron pit, base, blast cone, blue buff, blue side, bot lane, brush, bush, dragon pit, fountain, gromp, honeyfruit, inhib tower, jungle, krugs, mid lane, nexus towers, pixel bush, raptors, red buff, red side, river, scryer's bloom, side lane, tier 1, tier 2, tier 3, top lane, tribush, wolves
 
-TASK 1: SUMMARY (2-4 sentences)
+TASK 1: SCORECARD
 
-Answer these three questions in paragraph form:
-- Shotcalling: Which speaker(s) initiated the most objective calls and team directions? Was shotcalling concentrated in one voice or spread across multiple?
-- Objectives: What objectives were discussed (baron, dragon, towers, etc)? How frequently were objectives part of the comms?
-- Breakdowns: Were there conflicting calls from different speakers, moments of confusion about what to do, or extended silences during mid-to-late game?
+Rate this session in each category from 1-10. For each score, include the chunk_ids that most influenced your rating (only the clearest examples, not every instance).
+
+SUMMONER TRACKING (calling enemy cooldowns - flash, TP, ults, ignite, etc):
+1-3: Team rarely mentions enemy summoner spells. Key cooldowns go untracked.
+4-6: Some summoner calls but inconsistent. Team tracks obvious ones (flash) but misses others.
+7-9: Regular callouts on key cooldowns. Multiple speakers contributing tracking info.
+10: Comprehensive tracking throughout. Team proactively shares timers and plays around enemy cooldowns.
+
+OBJECTIVE SETUP (communication before baron, dragon, grubs, herald):
+1-3: Objectives taken with little or no prior discussion. Team walks in without a plan.
+4-6: Some objective calls but setup is disorganized. Calls happen but conditions aren't discussed.
+7-9: Clear objective calls with discussion of conditions (enemy cooldowns, wave state, vision). Team aligns before committing.
+10: Every objective is planned with full context. Team discusses win conditions, assigns roles, and has contingency if contested.
+
+TEAMFIGHT COMMS (communication during fights):
+1-3: Team goes quiet during fights or comms become chaotic and overlapping.
+4-6: Some target calling or peel requests but not consistent. Calls happen late or get lost.
+7-9: Clear target calling, cooldown sharing during fights, focus fire coordination.
+10: Crisp real-time coordination. Target switches communicated, cooldowns tracked mid-fight, disengage calls are clean.
+
+SHOTCALL CLARITY (are team directions clear and unified):
+1-3: No clear shotcaller. Calls are vague, conflicting, or absent. Team moves without direction.
+4-6: Shotcalling exists but sometimes conflicting or hesitant. Multiple voices giving different directions.
+7-9: One or two clear voices driving decisions. Team generally follows calls with minimal confusion.
+10: Decisive, unified shotcalling. Calls are specific, timely, and the team executes together.
+
+MAP AWARENESS (sharing enemy positions, jungle tracking, rotation calls, lane status):
+1-3: Team rarely communicates enemy positions or lane state. Rotations happen without warning.
+4-6: Some callouts but reactive rather than proactive. Team shares info after getting caught, not before.
+7-9: Regular proactive calls on enemy movement, jungle pathing, rotation timing, and lane state (examples: "I have prio," "I need help crashing," "I'm gankable," "wave is pushing to me").
+10: Constant information flow. Team tracks enemy jungler, calls missing laners early, anticipates rotations, and keeps teammates updated on lane pressure and vulnerability.
 
 TASK 2: TAGS
 
-Tag chunks that are notable. Do NOT tag every chunk. Only tag chunks where something meaningful happened. Return an array of objects with chunk_id, type, and label.
+Tag ONLY moments a coach would want to review. Most chunks are routine comms and should NOT be tagged. When in doubt, do not tag. Return an array of objects with chunk_id, type, and label.
 
-Tag types and what to look for:
+Tag types:
 
 - "objective_call": A speaker tells the team to take or set up for baron, dragon, elder, herald, tower, or inhibitor.
 - "shotcall": A speaker gives a clear team direction that is NOT an objective. Examples: "group mid," "split top," "back off," "fight here," "dive bot."
 - "disagreement": Two speakers give conflicting directions within a short time window. Example: Speaker 1 says "go baron" while Speaker 2 says "we can't, rotate bot." This is high value for coaches.
-- "good_comm": Clean, clear coordination. Multiple speakers confirming the same plan, sharing cooldown info, or building on each other's calls.
 - "silence": A gap of 30+ seconds between chunks during mid-to-late game (after 10:00). Indicates the team stopped communicating during a period where they probably should have been talking. Use the timestamps to detect this, not the text.
 - "tilt": Frustration, blame, negativity, or giving up. Examples: "why did you do that," "this is over," "I pinged you three times."
-- "info_share": A speaker shares tactical information. Examples: "flash is down on their mid," "they're doing raptors," "TP is up in 20 seconds."
 
 For the label field, write a short human-readable description of what happened (10 words max).
 
@@ -64,13 +89,20 @@ RESPONSE FORMAT
 Return ONLY valid JSON, no markdown, no backticks:
 
 {{
-  "summary": "string",
+  "scores": {{
+    "summoner_tracking": {{"score": 0, "chunk_ids": []}},
+    "objective_setup": {{"score": 0, "chunk_ids": []}},
+    "teamfight_comms": {{"score": 0, "chunk_ids": []}},
+    "shotcall_clarity": {{"score": 0, "chunk_ids": []}},
+    "map_awareness": {{"score": 0, "chunk_ids": []}}
+  }},
   "tags": [
     {{"chunk_id": "string", "type": "string", "label": "string"}}
   ]
 }}
 
 If no chunks deserve a particular tag type, simply don't include any tags of that type. An empty tags array is fine if the session has nothing notable."""
+
 
 
 def _get_client():
