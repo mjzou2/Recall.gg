@@ -48,15 +48,16 @@ export const createSession = async ({ title, youtube_url, notes }) => {
   return handleResponse(res)
 }
 
-export const updateSession = async (id, { title, youtube_url, notes }) => {
+export const updateSession = async (id, { title, youtube_url, notes, speaker_names }) => {
+  const body = {}
+  if (title !== undefined) body.title = title || null
+  if (youtube_url !== undefined) body.youtube_url = youtube_url || null
+  if (notes !== undefined) body.notes = notes || null
+  if (speaker_names !== undefined) body.speaker_names = speaker_names
   const res = await fetch(`${API_BASE}/sessions/${id}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      title: title !== undefined ? title || null : undefined,
-      youtube_url: youtube_url !== undefined ? youtube_url || null : undefined,
-      notes: notes !== undefined ? notes || null : undefined,
-    }),
+    body: JSON.stringify(body),
   })
   return handleResponse(res)
 }

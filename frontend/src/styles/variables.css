@@ -16,4 +16,8 @@
   --text-tertiary: #71717A;
   --border-subtle: rgba(255, 255, 255, 0.08);
   --border-medium: rgba(255, 255, 255, 0.12);
+
+  /* Sidebar */
+  --sidebar-bg: #111114;
+  --sidebar-width: 220px;
 }

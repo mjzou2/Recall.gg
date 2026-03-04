@@ -26,7 +26,7 @@ Watch the 4-minute walkthrough:
 ## The Vision (Next)
 
 Once you can search your comms, you can analyze them:
-- **Auto-generated session summaries and chunk tags** via Claude Haiku (implemented)
+- **Auto-generated session scorecards and chunk tags** via Claude Haiku (implemented)
 - Track how often your team communicates during objective fights
 - Visualize communication intensity across the game timeline
 - Identify patterns in decision-making and shotcalling
@@ -46,14 +46,15 @@ Search is the foundation. The goal is to extract insights from team communicatio
 - ✅ Automatic audio extraction from video files (ffmpeg) with light denoising
 - ✅ GPU-accelerated transcription (whisperX + CUDA, large-v3/int8) with word-level alignment
 - ✅ **Speaker diarization** via pyannote (identifies who said what)
+- ✅ **Speaker assignment** - Map speaker labels to real player names via modal with play-sample UX
 - ✅ **League-specific term bank** (305 terms: champions, objectives, items, locations, mechanics)
 - ✅ Post-normalization for common mishears (19 regex rules: apostrophe champions, abbreviations, etc.)
 - ✅ Fuzzy post-processing with RapidFuzz (auto-corrects against term bank, score_cutoff=82)
 - ✅ ~60% base accuracy on League terms, targeting 70-80% with fuzzy correction
 
 **LLM Analysis (Claude Haiku):**
-- ✅ **Session summaries** - Auto-generated 2-4 sentence summary covering shotcalling, objectives, and breakdowns
-- ✅ **Per-chunk tags** - Auto-tags notable moments: objective calls, shotcalls, disagreements, good comms, silences, tilt, info sharing
+- ✅ **Session scorecard** - Five comms categories rated 1-10 (summoner tracking, objective setup, teamfight comms, shotcall clarity, map awareness)
+- ✅ **Per-chunk tags** - Auto-tags notable moments: objective calls, shotcalls, disagreements, silences, tilt
 - ✅ Fault-tolerant: failures never block processing (controlled by ANTHROPIC_API_KEY + DISABLE_LLM_ANALYSIS)
 
 **Search & Navigation:**
@@ -64,6 +65,10 @@ Search is the foundation. The goal is to extract insights from team communicatio
 - ✅ **Multi-session search** - Search across all sessions at once when no session is selected; results grouped by session
 - ✅ **Embedded YouTube player** - Click timestamps to seek player instantly; auto-switches videos across sessions
 - ✅ **Player position sync** - Active chunk highlights and auto-scrolls as video plays (toggleable)
+- ✅ **Session timeline** - Speaker activity visualization below YouTube player (recharts)
+  - Per-speaker activity lines at 15-second intervals with 60-second sliding window
+  - LLM tag markers (colored dots for objective calls, shotcalls, disagreements, silence, tilt)
+  - Playhead synced with YouTube player, click-to-seek on timeline
 - ✅ **Tab-based sidebar** - Switch between Sessions and Explore (transcript) views
 - ✅ Pagination and chunk expansion (clickable text)
 
@@ -169,7 +174,7 @@ Frontend: http://localhost:5173
 ## Technical Stack
 
 - **Backend:** FastAPI (Python), Postgres with tsvector full-text search + pgvector semantic search, psycopg2, whisperX (transcription + alignment + diarization), sentence-transformers, Claude Haiku (LLM analysis), ffmpeg, RapidFuzz
-- **Frontend:** React + Vite
+- **Frontend:** React + Vite, recharts (timeline visualization)
 - **Database:** Postgres (via Docker Compose) with pgvector extension, psycopg2 connection pool, no ORM
 - **Environment:** WSL2, GPU-accelerated (CUDA 12.9), local-first (no cloud)
 - **Data:** Sessions/chunks in Postgres, uploaded media/audio in `backend/data/`
@@ -217,7 +222,7 @@ vodcomms/
 ├── frontend/
 │   ├── src/
 │   │   ├── App.jsx          # Main component (~150 lines)
-│   │   ├── components/      # React components (Header, SessionsPanel, ExplorePanel, YouTubePlayer)
+│   │   ├── components/      # React components (Header, SessionsPanel, ExplorePanel, YouTubePlayer, SessionTimeline)
 │   │   ├── hooks/           # Custom hooks (useAppState, useYouTubePlayer)
 │   │   ├── utils/           # Utilities (formatters, api client)
 │   │   └── styles/          # Global CSS (variables, base styles)
@@ -232,7 +237,7 @@ vodcomms/
 ## Roadmap
 
 **MVP 1.0 (✅ Complete):** Full local tool with search, transcription, time filtering, bookmarks, annotations, and LLM analysis
-**MVP 1.5 (Next):** Speaker diarization frontend UI, intensity detection, session comparison
+**MVP 1.5 (In Progress):** Speaker assignment modal (done), speaker filtering, intensity detection, session comparison
 **MVP 2.0 (Future):** Production SaaS with teams, cloud hosting, fine-tuned models, live transcription
 
 See [PRODUCT.md](docs/PRODUCT.md) for detailed roadmap and feature priorities.
@@ -247,4 +252,4 @@ See [PRODUCT.md](docs/PRODUCT.md) for detailed roadmap and feature priorities.
 - **React + Vite**
 - **RapidFuzz**
 - **sentence-transformers** + **pgvector**
-- **Anthropic Claude Haiku** (LLM analysis)
+- **Anthropic Claude Haiku**

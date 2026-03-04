@@ -12,6 +12,7 @@ class SessionUpdateRequest(BaseModel):
     title: Optional[str] = None
     youtube_url: Optional[str] = None
     notes: Optional[str] = None
+    speaker_names: Optional[dict] = None
 
 
 class SessionResponse(BaseModel):
@@ -24,6 +25,7 @@ class SessionResponse(BaseModel):
     created_at: str
     processing_duration_seconds: Optional[int] = None
     notes: Optional[str] = None
+    speaker_names: Optional[dict] = None
 
 class ChunkResponse(BaseModel):
     id: str

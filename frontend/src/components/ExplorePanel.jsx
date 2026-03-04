@@ -421,7 +421,7 @@ export const ExplorePanel = ({
                 )}
                 {chunk.speaker && (
                   <span className={styles.speakerLabel}>
-                    Speaker {parseInt(chunk.speaker.replace('SPEAKER_', ''), 10) + 1}
+                    {formatters.getSpeakerDisplayName(chunk.speaker, sessionDetails?.speaker_names)}
                   </span>
                 )}
                 <div className={styles.chunkHeaderRight}>

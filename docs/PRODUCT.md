@@ -110,17 +110,19 @@ Most VOD tools parse **game events** (kills, objectives, gold). RECALL.GG parses
   - Speaker labels stored as `speaker` field on chunks (e.g. "SPEAKER_00")
   - Fault-tolerant: diarization failures fall back to speaker=None
   - Requires HF_TOKEN and accepted model licenses on HuggingFace
-- **Speaker diarization (frontend)** - Display and filter by speaker
-  - Show speaker labels in chunk UI
-  - Manual speaker labeling (map SPEAKER_00 → "JG", etc.)
-  - Filter/search by speaker
+- ✓ **Speaker assignment modal** - Map diarization labels to real player names
+  - Modal with per-speaker color dot, name input, and "play sample" button
+  - speaker_names JSONB column on sessions table, persisted via PATCH
+  - Names propagate to transcript panel, timeline tooltip, and search results
+  - Auto-prompts on first entry to session mode after processing
+- **Speaker filtering** - Filter/search by speaker name
   - Enables searches like "show me everything the jungler said about Baron"
 
 ### Content Intelligence
-- ✓ **LLM analysis via Claude Haiku** - Auto-generate session summary + per-chunk tags
-  - Session summary (2-4 sentences) → stored in sessions.notes, covers shotcalling, objectives, breakdowns
+- ✓ **LLM analysis via Claude Haiku** - Auto-generate session scorecard + per-chunk tags
+  - Scorecard (5 categories, 1-10): summoner_tracking, objective_setup, teamfight_comms, shotcall_clarity, map_awareness → formatted as text in sessions.notes
   - Per-chunk tags → appended to chunks.notes as `[type] label`
-  - Tag types: objective_call, shotcall, disagreement, good_comm, silence, tilt, info_share
+  - Tag types: objective_call, shotcall, disagreement, silence, tilt
   - System prompt grounded with term bank reference (objectives + locations)
   - Fault-tolerant: never blocks processing on failure
   - Controlled by DISABLE_LLM_ANALYSIS flag and ANTHROPIC_API_KEY env var
@@ -241,10 +243,10 @@ Most VOD tools parse **game events** (kills, objectives, gold). RECALL.GG parses
 - Evaluation harness for measuring transcription quality improvements
 
 ### MVP 1.5 Feature Priority (Based on Coach Feedback)
-1. Speaker diarization **frontend UI** (backend diarization is implemented)
-2. ✓ LLM analysis via Claude Haiku (session summaries + per-chunk tags)
+1. ✓ Speaker assignment modal + name propagation (speaker_names JSONB, play-sample UX)
+2. ✓ LLM analysis via Claude Haiku (session scorecard + per-chunk tags)
 3. ✓ Semantic search (implemented: sentence-transformers + pgvector hybrid search)
-4. Timeline visualization (if coaches say "hard to see patterns")
+4. ✓ Timeline visualization (speaker activity lines + LLM tag markers, recharts)
 5. Intensity detection (if coaches say "need to find teamfight comms faster")
 
 ---

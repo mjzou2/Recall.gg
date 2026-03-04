@@ -77,10 +77,13 @@ def update_session(session_id: str, payload: SessionUpdateRequest) -> SessionRes
 
     fields = []
     values = []
-    for key in ("title", "youtube_url", "notes"):
+    for key in ("title", "youtube_url", "notes", "speaker_names"):
         if key in updates:
             fields.append(f"{key} = %s")
-            values.append(updates[key])
+            if key == "speaker_names" and updates[key] is not None:
+                values.append(psycopg2.extras.Json(updates[key]))
+            else:
+                values.append(updates[key])
 
     values.append(session_id)
     conn = get_conn()

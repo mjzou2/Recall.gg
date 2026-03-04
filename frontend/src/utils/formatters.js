@@ -111,6 +111,24 @@ export const getStatusDisplay = (status) => {
   return map[status] || status
 }
 
+// Scorecard Helpers
+
+export const parseScorecard = (notes) => {
+  if (!notes || !notes.includes('SCORECARD')) return null
+  const scores = {}
+  for (const line of notes.split('\n')) {
+    const match = line.match(/^(.+?):\s*(\d+)\/10$/)
+    if (match) scores[match[1].trim()] = parseInt(match[2], 10)
+  }
+  return Object.keys(scores).length > 0 ? scores : null
+}
+
+export const averageScore = (scorecard) => {
+  if (!scorecard) return null
+  const vals = Object.values(scorecard)
+  return vals.length ? (vals.reduce((a, b) => a + b, 0) / vals.length).toFixed(1) : null
+}
+
 // Text Helpers
 
 export const getPreviewText = (text) => {
@@ -119,4 +137,15 @@ export const getPreviewText = (text) => {
   if (firstLine.length > 140) return `${firstLine.slice(0, 140)}...`
   if (text.length > firstLine.length) return `${firstLine}...`
   return firstLine
+}
+
+// Speaker Helpers
+
+export const getSpeakerDisplayName = (speakerLabel, speakerNames) => {
+  if (!speakerLabel) return null
+  const match = speakerLabel.match(/(\d+)/)
+  if (!match) return speakerLabel
+  const speakerNum = match[1]
+  if (speakerNames && speakerNames[speakerNum]) return speakerNames[speakerNum]
+  return `S${parseInt(speakerNum, 10) + 1}`
 }

@@ -1,4 +1,5 @@
 import gc
+import multiprocessing
 from pathlib import Path
 from typing import Dict, List, Optional
 
@@ -35,13 +36,19 @@ def _get_compute_type() -> str:
 
 
 def _unload_model(model) -> None:
-    """Delete a model and free GPU memory."""
+    """Delete a model and free GPU memory, including orphaned child processes."""
     import torch
 
     del model
     gc.collect()
     if torch.cuda.is_available():
         torch.cuda.empty_cache()
+
+    # Terminate any orphaned multiprocessing workers (whisperX/pyannote spawn these
+    # for GPU batch operations and don't always clean them up)
+    for child in multiprocessing.active_children():
+        child.terminate()
+        child.join(timeout=5)
 
 
 HOTWORDS = [

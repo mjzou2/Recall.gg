@@ -13,6 +13,7 @@ export const useAppState = () => {
   const [sessionId, setSessionId] = useState('')
   const [sessionDetails, setSessionDetails] = useState(null)
   const [chunks, setChunks] = useState([])
+  const [allChunks, setAllChunks] = useState([])
   const [status, setStatus] = useState('')
   const [error, setError] = useState('')
 
@@ -60,6 +61,7 @@ export const useAppState = () => {
       const data = await api.getSessionById(id)
       setSessionDetails(data.session)
       setChunks(data.chunks || [])
+      setAllChunks(data.chunks || [])
       setSessionId(id)
       setStatus('Ready')
     } catch (err) {
@@ -76,6 +78,7 @@ export const useAppState = () => {
       setSessionId(data.id)
       setSessionDetails(data)
       setChunks([])
+      setAllChunks([])
       setStatus('Session created')
       await loadSessions()
       return data
@@ -110,6 +113,7 @@ export const useAppState = () => {
       setSessionId('')
       setSessionDetails(null)
       setChunks([])
+      setAllChunks([])
       await loadSessions()
       setStatus('Session deleted')
     } catch (err) {
@@ -123,6 +127,7 @@ export const useAppState = () => {
     setSessionId('')
     setSessionDetails(null)
     setChunks([])
+    setAllChunks([])
   }
 
   // Media handlers
@@ -198,6 +203,9 @@ export const useAppState = () => {
       setChunks((prev) =>
         prev.map((c) => (c.id === updatedChunk.id ? updatedChunk : c))
       )
+      setAllChunks((prev) =>
+        prev.map((c) => (c.id === updatedChunk.id ? updatedChunk : c))
+      )
 
       return updatedChunk
     } catch (err) {
@@ -212,6 +220,7 @@ export const useAppState = () => {
     sessionId,
     sessionDetails,
     chunks,
+    allChunks,
     status,
     error,
     isUploading,

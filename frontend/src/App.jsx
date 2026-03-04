@@ -1,22 +1,27 @@
-import { useState } from 'react'
-import { Header } from './components/Header'
-import { SessionsPanel } from './components/SessionsPanel'
+import { useState, useEffect, useRef } from 'react'
+import { Sidebar } from './components/Sidebar'
+import { SessionList } from './components/SessionList'
+import { SessionDetail } from './components/SessionDetail'
+import { TranscriptPanel } from './components/TranscriptPanel'
 import { ExplorePanel } from './components/ExplorePanel'
 import { YouTubePlayer } from './components/YouTubePlayer'
+import { SessionTimeline } from './components/SessionTimeline'
+import { SpeakerAssignmentModal } from './components/SpeakerAssignmentModal'
 import { useAppState } from './hooks/useAppState'
 import { useYouTubePlayer } from './hooks/useYouTubePlayer'
-import { FEATURE_FLAGS } from './utils/api'
 
 function App() {
-  const [sidebarTab, setSidebarTab] = useState('sessions')
+  const [activeView, setActiveView] = useState('sessions')
   const [pageIndex, setPageIndex] = useState(0)
+  const [showSpeakerModal, setShowSpeakerModal] = useState(false)
+  const speakerPromptedRef = useRef(new Set())
 
-  // Get all application state and handlers
   const {
     sessions,
     sessionId,
     sessionDetails,
     chunks,
+    allChunks,
     status,
     error,
     isUploading,
@@ -34,7 +39,6 @@ function App() {
     closeSession,
   } = useAppState()
 
-  // Get YouTube player state and handlers
   const {
     youtubePlayer,
     isYoutubeApiReady,
@@ -53,79 +57,135 @@ function App() {
     loadVideo(url, seconds)
   }
 
+  // Session Mode: ready session with chunks → transcript panel + full-width video
+  const isSessionMode = Boolean(
+    sessionId && sessionDetails?.status === 'ready' && allChunks.length > 0
+  )
+
+  // Auto-prompt speaker assignment for newly processed sessions
+  useEffect(() => {
+    if (
+      isSessionMode &&
+      sessionDetails &&
+      sessionDetails.speaker_names === null &&
+      !speakerPromptedRef.current.has(sessionDetails.id) &&
+      allChunks.some(c => c.speaker)
+    ) {
+      speakerPromptedRef.current.add(sessionDetails.id)
+      setShowSpeakerModal(true)
+    }
+  }, [isSessionMode, sessionDetails?.id, sessionDetails?.speaker_names, allChunks])
+
+  const handleSaveSpeakerNames = async (mapping) => {
+    await updateSession(sessionId, { speaker_names: mapping })
+    setShowSpeakerModal(false)
+  }
+
   return (
-    <div className="page">
-      <Header
-        status={status}
-        error={error}
-        showStatusBox={FEATURE_FLAGS.SHOW_STATUS_BOX}
-      />
+    <div className="app-layout">
+      {/* Navigation Mode: sidebar visible */}
+      {!isSessionMode && (
+        <Sidebar activeView={activeView} onNavigate={setActiveView} />
+      )}
 
-      <section className="main-layout">
-        <div className="left-column">
-          <div className="sidebar-tabs">
-            <button
-              className={sidebarTab === 'sessions' ? 'active' : ''}
-              onClick={() => setSidebarTab('sessions')}
-            >
-              Sessions
-            </button>
-            <button
-              className={sidebarTab === 'explore' ? 'active' : ''}
-              onClick={() => setSidebarTab('explore')}
-            >
-              Explore
-            </button>
-          </div>
+      {/* Session Mode: transcript panel + video/timeline */}
+      {isSessionMode && (
+        <>
+          <TranscriptPanel
+            chunks={allChunks}
+            sessionDetails={sessionDetails}
+            activeChunkId={activeChunkId}
+            autoScrollEnabled={autoScrollEnabled}
+            chunkListRef={chunkListRef}
+            onTimestampClick={handleTimestampClick}
+            onUpdateChunk={updateChunk}
+            onCloseSession={closeSession}
+            onOpenSpeakerModal={() => setShowSpeakerModal(true)}
+          />
+          <main className="session-content">
+            <YouTubePlayer
+              videoUrl={currentVideoUrl || sessionDetails?.youtube_url}
+              hasSession={true}
+              fillHeight
+            />
+            <SessionTimeline
+              chunks={allChunks}
+              youtubePlayer={youtubePlayer}
+              loadVideo={loadVideo}
+              currentVideoUrl={currentVideoUrl || sessionDetails?.youtube_url}
+              speakerNames={sessionDetails?.speaker_names}
+            />
+          </main>
+        </>
+      )}
 
-          <div className="sidebar-content">
-            {sidebarTab === 'sessions' && (
-              <SessionsPanel
-                sessions={sessions}
-                sessionId={sessionId}
+      {/* Navigation Mode: main area content */}
+      {!isSessionMode && (
+        <main className="main-area">
+          {activeView === 'sessions' && !sessionId && (
+            <SessionList
+              sessions={sessions}
+              sessionId={sessionId}
+              isUploading={isUploading}
+              isProcessing={isProcessing}
+              onLoadSessions={loadSessions}
+              onLoadSessionDetails={loadSessionDetails}
+              onCreateSession={createSession}
+              onUploadMedia={uploadMedia}
+            />
+          )}
+
+          {activeView === 'sessions' && sessionId && (
+            <>
+              <SessionDetail
                 sessionDetails={sessionDetails}
+                sessionId={sessionId}
                 isUploading={isUploading}
                 isProcessing={isProcessing}
                 elapsedSeconds={elapsedSeconds}
-                onLoadSessions={loadSessions}
-                onLoadSessionDetails={loadSessionDetails}
-                onCreateSession={createSession}
                 onUpdateSession={updateSession}
                 onDeleteSession={deleteSession}
+                onCloseSession={closeSession}
                 onUploadMedia={uploadMedia}
                 onProcessMedia={processMedia}
-                onCloseSession={closeSession}
               />
-            )}
-
-            {sidebarTab === 'explore' && (
-              <ExplorePanel
-                sessionId={sessionId}
-                sessionDetails={sessionDetails}
-                chunks={chunks}
-                youtubePlayer={youtubePlayer}
-                chunkListRef={chunkListRef}
-                activeChunkId={activeChunkId}
-                autoScrollEnabled={autoScrollEnabled}
-                setAutoScrollEnabled={setAutoScrollEnabled}
-                pageIndex={pageIndex}
-                setPageIndex={setPageIndex}
-                onSearch={searchChunks}
-                onReloadSession={loadSessionDetails}
-                onUpdateChunk={updateChunk}
-                onTimestampClick={handleTimestampClick}
+              <YouTubePlayer
+                videoUrl={currentVideoUrl || sessionDetails?.youtube_url}
+                hasSession={Boolean(sessionId)}
               />
-            )}
-          </div>
-        </div>
+            </>
+          )}
 
-        <div className="main-content">
-          <YouTubePlayer
-            videoUrl={currentVideoUrl || sessionDetails?.youtube_url}
-            hasSession={Boolean(sessionId)}
-          />
-        </div>
-      </section>
+          {activeView === 'explore' && (
+            <ExplorePanel
+              sessionId={sessionId}
+              sessionDetails={sessionDetails}
+              chunks={chunks}
+              youtubePlayer={youtubePlayer}
+              chunkListRef={chunkListRef}
+              activeChunkId={activeChunkId}
+              autoScrollEnabled={autoScrollEnabled}
+              setAutoScrollEnabled={setAutoScrollEnabled}
+              pageIndex={pageIndex}
+              setPageIndex={setPageIndex}
+              onSearch={searchChunks}
+              onReloadSession={loadSessionDetails}
+              onUpdateChunk={updateChunk}
+              onTimestampClick={handleTimestampClick}
+            />
+          )}
+        </main>
+      )}
+
+      {showSpeakerModal && (
+        <SpeakerAssignmentModal
+          chunks={allChunks}
+          speakerNames={sessionDetails?.speaker_names}
+          onSave={handleSaveSpeakerNames}
+          onCancel={() => setShowSpeakerModal(false)}
+          onPlaySample={handleTimestampClick}
+        />
+      )}
     </div>
   )
 }
