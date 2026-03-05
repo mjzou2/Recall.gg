@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.database import init_storage
-from app.routers import sessions, chunks, media
+from app.routers import sessions, chunks, media, settings
 
 
 app = FastAPI(title="RECALL.GG", description="Esports comms search MVP")
@@ -32,3 +32,4 @@ def health() -> Dict[str, bool]:
 app.include_router(sessions.router)
 app.include_router(chunks.router)
 app.include_router(media.router)
+app.include_router(settings.router)

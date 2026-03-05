@@ -322,7 +322,14 @@
   align-items: baseline;
   gap: 0.75rem;
   padding: 1.5rem 0.875rem 0.5rem;
-  border-top: 1px solid var(--border-subtle);
+  border-top: 2px solid var(--border-medium);
+  cursor: pointer;
+  border-radius: 6px;
+  transition: background 0.15s ease;
+}
+
+.sessionGroupHeader:hover {
+  background: rgba(0, 184, 212, 0.04);
 }
 
 .sessionGroup:first-child .sessionGroupHeader {
@@ -355,7 +362,7 @@
 }
 
 .chunk:hover {
-  background: rgba(0, 184, 212, 0.04);
+  background: rgba(255, 255, 255, 0.03);
 }
 
 .chunk.active {
@@ -526,20 +533,8 @@
   font-size: 0.875rem;
 }
 
-.chunkText:hover {
-  background-color: rgba(0, 184, 212, 0.04);
-  color: var(--text-primary);
-}
-
 .chunkText.editable {
   cursor: pointer;
-  transition: background 0.2s ease, border-color 0.2s ease;
-}
-
-.chunkText.editable:hover {
-  background: var(--bg-hover);
-  border-left: 2px solid var(--purple-primary);
-  padding-left: calc(0.75rem - 2px);
 }
 
 /* Chunk Text Editing */

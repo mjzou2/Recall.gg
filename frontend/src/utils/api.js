@@ -105,6 +105,22 @@ export const searchChunks = async (
   return handleResponse(res)
 }
 
+// Settings API
+
+export const getSettings = async () => {
+  const res = await fetch(`${API_BASE}/settings`)
+  return handleResponse(res)
+}
+
+export const updateSettings = async (settings) => {
+  const res = await fetch(`${API_BASE}/settings`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(settings),
+  })
+  return handleResponse(res)
+}
+
 // Chunks API
 
 export const updateChunk = async (chunkId, { text, notes, is_bookmarked }) => {

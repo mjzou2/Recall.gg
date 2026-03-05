@@ -66,7 +66,6 @@ export const ExplorePanel = ({
   const [filterSessionId, setFilterSessionId] = useState('')
 
   // Chunk interaction state
-  const [expandedChunkIds, setExpandedChunkIds] = useState(new Set())
   const [copiedChunkId, setCopiedChunkId] = useState(null)
   const [editingNoteChunkId, setEditingNoteChunkId] = useState(null)
   const [noteText, setNoteText] = useState('')
@@ -90,7 +89,6 @@ export const ExplorePanel = ({
           is_bookmarked: bookmarkedOnly || null,
         })
         setPageIndex(0)
-        setExpandedChunkIds(new Set())
       } catch (err) {
         // Error handled by parent
       }
@@ -108,17 +106,29 @@ export const ExplorePanel = ({
     return map
   }, [sessions])
 
-  // Reset page index when chunks change
+  // Client-side filters (notes / tags)
+  const filteredChunks = useMemo(() => {
+    let result = chunks
+    if (hasNotesOnly) {
+      result = result.filter(c => c.notes && c.notes.trim())
+    }
+    if (hasTagsOnly) {
+      result = result.filter(c => c.notes && c.notes.split('\n').some(line => TAG_PATTERN.test(line.trim())))
+    }
+    return result
+  }, [chunks, hasNotesOnly, hasTagsOnly])
+
+  // Reset page index when chunks or filters change
   useEffect(() => {
-    const totalPages = Math.max(1, Math.ceil(chunks.length / PAGE_SIZE))
+    const totalPages = Math.max(1, Math.ceil(filteredChunks.length / PAGE_SIZE))
     if (pageIndex > totalPages - 1) {
       setPageIndex(0)
     }
-  }, [chunks.length, pageIndex])
+  }, [filteredChunks.length, pageIndex])
 
-  const totalPages = Math.max(1, Math.ceil(chunks.length / PAGE_SIZE))
+  const totalPages = Math.max(1, Math.ceil(filteredChunks.length / PAGE_SIZE))
   const pageStart = pageIndex * PAGE_SIZE
-  const pageChunks = chunks.slice(pageStart, pageStart + PAGE_SIZE)
+  const pageChunks = filteredChunks.slice(pageStart, pageStart + PAGE_SIZE)
 
   // Group page chunks by session when doing multi-session search
   const groupedResults = useMemo(() => {
@@ -137,6 +147,7 @@ export const ExplorePanel = ({
       }
       groups[seen.get(sid)].chunks.push(chunk)
     }
+    groups.sort((a, b) => (b.session?.created_at || '').localeCompare(a.session?.created_at || ''))
     return groups
   }, [pageChunks, isSearching, filterSessionId, sessionMap])
 
@@ -156,7 +167,6 @@ export const ExplorePanel = ({
       setLastTimeRange('')
       setTimeRangeError('')
       setPageIndex(0)
-      setExpandedChunkIds(new Set())
       if (filterSessionId) {
         await onReloadSession(filterSessionId)
       }
@@ -201,7 +211,6 @@ export const ExplorePanel = ({
       }
 
       setPageIndex(0)
-      setExpandedChunkIds(new Set())
     } catch (err) {
       // Error handled by parent
     }
@@ -212,30 +221,19 @@ export const ExplorePanel = ({
     setStartTime('')
     setEndTime('')
     setBookmarkedOnly(false)
+    setHasNotesOnly(false)
+    setHasTagsOnly(false)
     setTimeRangeError('')
     setIsSearching(false)
     setLastQuery('')
     setLastTimeRange('')
     setPageIndex(0)
-    setExpandedChunkIds(new Set())
 
     if (filterSessionId) {
       await onReloadSession(filterSessionId)
     } else {
       await onSearch(null, { query: '' })
     }
-  }
-
-  const toggleChunkExpanded = (chunkKey) => {
-    setExpandedChunkIds((prev) => {
-      const next = new Set(prev)
-      if (next.has(chunkKey)) {
-        next.delete(chunkKey)
-      } else {
-        next.add(chunkKey)
-      }
-      return next
-    })
   }
 
   const handleCopyTimestamp = async (chunkKey, youtubeLink) => {
@@ -322,8 +320,6 @@ export const ExplorePanel = ({
   const renderChunk = (chunk) => {
     const chunkKey =
       chunk.id ?? `${chunk.start_ms}-${chunk.end_ms}-${chunk.text?.length ?? 0}`
-    const isExpanded = expandedChunkIds.has(chunkKey)
-    const previewText = formatters.getPreviewText(chunk.text || '')
     const chunkSession = sessionMap[chunk.session_id] || sessionDetails
     const chunkVideoUrl = chunk.youtube_url || chunkSession?.youtube_url
     const youtubeLink = formatters.buildYoutubeUrlWithTimestamp(
@@ -341,7 +337,7 @@ export const ExplorePanel = ({
       <div
         key={chunkKey}
         data-chunk-key={chunkKey}
-        className={`${styles.chunk} ${chunkKey === activeChunkId ? styles.active : ''}`}
+        className={styles.chunk}
       >
         <div className={styles.chunkHeader}>
           {chunkVideoUrl ? (
@@ -386,7 +382,7 @@ export const ExplorePanel = ({
             {youtubeLink && (
               <button
                 type="button"
-                className={`${styles.copyBtn} ${isExpanded ? styles.alwaysVisible : styles.hoverVisible}`}
+                className={`${styles.copyBtn} ${styles.hoverVisible}`}
                 onClick={() => handleCopyTimestamp(chunkKey, youtubeLink)}
                 title="Copy timestamp URL"
               >
@@ -395,29 +391,7 @@ export const ExplorePanel = ({
             )}
             <button
               type="button"
-              className={`${styles.noteBtn} ${isExpanded || chunk.notes ? styles.alwaysVisible : styles.hoverVisible}`}
-              onClick={() => {
-                if (!isExpanded) {
-                  toggleChunkExpanded(chunkKey)
-                } else {
-                  handleEditNote(chunk, chunkKey)
-                }
-              }}
-              title={
-                !isExpanded && chunk.notes
-                  ? 'Has note - click to expand'
-                  : !isExpanded
-                  ? 'Expand to add note'
-                  : chunk.notes
-                  ? 'Edit note'
-                  : 'Add note'
-              }
-            >
-              {chunk.notes ? '📝' : '✏️'}
-            </button>
-            <button
-              type="button"
-              className={`${styles.copyBtn} ${isExpanded || chunk.is_bookmarked ? styles.alwaysVisible : styles.hoverVisible}`}
+              className={`${styles.copyBtn} ${chunk.is_bookmarked ? styles.alwaysVisible : styles.hoverVisible}`}
               onClick={(e) => {
                 e.stopPropagation()
                 handleToggleBookmark(chunk)
@@ -428,11 +402,11 @@ export const ExplorePanel = ({
             </button>
             <button
               type="button"
-              className={isExpanded ? `${styles.collapseBtn} ${styles.alwaysVisible}` : `${styles.expandIndicator} ${styles.hoverVisible}`}
-              onClick={() => toggleChunkExpanded(chunkKey)}
-              title={isExpanded ? 'Click to collapse' : 'Click to expand'}
+              className={`${styles.noteBtn} ${chunk.notes ? styles.alwaysVisible : styles.hoverVisible}`}
+              onClick={() => handleEditNote(chunk, chunkKey)}
+              title={chunk.notes ? 'Edit note' : 'Add note'}
             >
-              {isExpanded ? '▲' : '▼'}
+              {chunk.notes ? '📝' : '✏️'}
             </button>
           </div>
         </div>
@@ -461,28 +435,18 @@ export const ExplorePanel = ({
           </div>
         ) : (
           <p
-            className={`${styles.chunkText} ${isExpanded && editingNoteChunkId !== chunkKey ? styles.editable : ''}`}
-            onClick={() => {
-              if (isExpanded && editingNoteChunkId !== chunkKey) {
+            className={styles.chunkText}
+            onDoubleClick={() => {
+              if (editingNoteChunkId !== chunkKey) {
                 handleEditText(chunk, chunkKey)
-              } else if (!isExpanded) {
-                toggleChunkExpanded(chunkKey)
               }
             }}
-            title={
-              isExpanded && editingNoteChunkId !== chunkKey
-                ? 'Click to edit'
-                : !isExpanded
-                ? 'Click to expand'
-                : ''
-            }
+            title={editingNoteChunkId !== chunkKey ? 'Double-click to edit' : ''}
           >
-            {isExpanded
-              ? highlightText(chunk.text, lastQuery)
-              : highlightText(previewText, lastQuery)}
+            {highlightText(chunk.text, lastQuery)}
           </p>
         )}
-        {isExpanded && editingNoteChunkId === chunkKey && (
+        {editingNoteChunkId === chunkKey && (
           <div className={styles.chunkNoteEdit}>
             <label className="field">
               <span>Notes ({100 - noteText.length} chars left)</span>
@@ -506,7 +470,7 @@ export const ExplorePanel = ({
             </label>
           </div>
         )}
-        {isExpanded && editingNoteChunkId !== chunkKey && chunk.notes && (
+        {editingNoteChunkId !== chunkKey && chunk.notes && (
           <div className={styles.chunkNoteDisplay}>
             <p className={styles.noteLabel}>Notes:</p>
             <p
@@ -596,6 +560,22 @@ export const ExplorePanel = ({
             />
             <span>Bookmarked</span>
           </label>
+          <label className={styles.bookmarkFilterLabel}>
+            <input
+              type="checkbox"
+              checked={hasNotesOnly}
+              onChange={(e) => setHasNotesOnly(e.target.checked)}
+            />
+            <span>Has Notes</span>
+          </label>
+          <label className={styles.bookmarkFilterLabel}>
+            <input
+              type="checkbox"
+              checked={hasTagsOnly}
+              onChange={(e) => setHasTagsOnly(e.target.checked)}
+            />
+            <span>Has Tags</span>
+          </label>
           <div className={styles.filterActions}>
             <button
               type="button"
@@ -634,7 +614,7 @@ export const ExplorePanel = ({
         )}
 
         {/* Empty state: no results */}
-        {isSearching && chunks.length === 0 && (
+        {isSearching && filteredChunks.length === 0 && (
           <div className={styles.emptyState}>
             <p className={styles.emptyTitle}>No results found</p>
             <p className={styles.emptySubtext}>
@@ -646,10 +626,11 @@ export const ExplorePanel = ({
         )}
 
         {/* Results header + pagination */}
-        {chunks.length > 0 && (
+        {filteredChunks.length > 0 && (
           <div className={styles.resultsHeader}>
             <span className={styles.resultCount}>
-              {chunks.length} result{chunks.length !== 1 ? 's' : ''}
+              {filteredChunks.length} result{filteredChunks.length !== 1 ? 's' : ''}
+              {(hasNotesOnly || hasTagsOnly) && filteredChunks.length !== chunks.length && <> (filtered from {chunks.length})</>}
               {lastQuery && <> for &ldquo;{lastQuery}&rdquo;</>}
               {lastTimeRange && <> ({lastTimeRange})</>}
             </span>
@@ -694,7 +675,10 @@ export const ExplorePanel = ({
           {groupedResults ? (
             groupedResults.map((group) => (
               <div key={group.sessionId} className={styles.sessionGroup}>
-                <div className={styles.sessionGroupHeader}>
+                <div
+                  className={styles.sessionGroupHeader}
+                  onClick={() => onNavigateToSession(group.sessionId, { start_ms: 0, end_ms: 0, text: '' })}
+                >
                   <span className={styles.sessionGroupTitle}>
                     {group.session?.title || 'Untitled Session'}
                   </span>

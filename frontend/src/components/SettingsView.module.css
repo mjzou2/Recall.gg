@@ -1,0 +1,81 @@
+/* Settings Container - full height, scrollable */
+.settingsContainer {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/* Centered content column */
+.settingsContent {
+  max-width: 600px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 0.5rem 2rem 2rem;
+}
+
+/* Header */
+.settingsHeader {
+  margin-bottom: 2rem;
+}
+
+.settingsTitle {
+  font-size: 1.375rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+
+/* Section */
+.section {
+  margin-bottom: 2rem;
+}
+
+.sectionTitle {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 0.25rem;
+}
+
+.sectionDescription {
+  font-size: 0.8125rem;
+  color: var(--text-tertiary);
+  margin: 0 0 0.75rem;
+  line-height: 1.5;
+}
+
+/* Model select */
+.modelSelect {
+  width: 100%;
+  max-width: 240px;
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  border: 1px solid var(--border-medium);
+  background: var(--bg-base);
+  color: var(--text-primary);
+  font-size: 0.875rem;
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+
+.modelSelect:focus {
+  outline: none;
+  border-color: var(--purple-primary);
+  box-shadow: 0 0 0 3px var(--purple-glow);
+}
+
+.savedHint {
+  font-size: 0.75rem;
+  color: var(--purple-primary);
+  margin-top: 0.5rem;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.savedHint.visible {
+  opacity: 1;
+}

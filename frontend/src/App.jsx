@@ -10,6 +10,7 @@ import { SpeakerAssignmentModal } from './components/SpeakerAssignmentModal'
 import { ConfirmDialog } from './components/ConfirmDialog'
 import { Breadcrumbs } from './components/Breadcrumbs'
 import { MobileDisclaimer } from './components/MobileDisclaimer'
+import { SettingsView } from './components/SettingsView'
 import { useAppState } from './hooks/useAppState'
 import { useYouTubePlayer } from './hooks/useYouTubePlayer'
 
@@ -202,6 +203,10 @@ function App() {
               openInEditMode={openInEditMode}
               onEditModeUsed={() => setOpenInEditMode(false)}
             />
+          )}
+
+          {activeView === 'settings' && (
+            <SettingsView />
           )}
 
           {/* ExplorePanel: always mounted to preserve search state, hidden via CSS when not active */}
