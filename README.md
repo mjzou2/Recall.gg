@@ -62,14 +62,20 @@ Search is the foundation. The goal is to extract insights from team communicatio
 - ✅ **Semantic search** - Vector similarity via sentence-transformers + pgvector (hybrid with keyword search)
 - ✅ **Time range filtering** - Filter chunks by game time (MM:SS format)
 - ✅ **Bookmark filtering** - Filter to show only bookmarked chunks via "Show bookmarked only" toggle
-- ✅ **Multi-session search** - Search across all sessions at once when no session is selected; results grouped by session
+- ✅ **Multi-session search** - Search across all sessions at once; results grouped by session with headers
+- ✅ **Full-width Explore view** - Centered layout (max-width 900px) with prominent search bar
+  - Session filter dropdown (search all or filter to one session)
+  - Search term highlighting (purple marks on matched terms)
+  - LLM tag dots + colored speaker dots on each result
+  - Cross-session click-through: click a result → enters Session Mode with video auto-seek
+  - Back button returns to Explore with search state preserved
 - ✅ **Embedded YouTube player** - Click timestamps to seek player instantly; auto-switches videos across sessions
 - ✅ **Player position sync** - Active chunk highlights and auto-scrolls as video plays (toggleable)
 - ✅ **Session timeline** - Speaker activity visualization below YouTube player (recharts)
   - Per-speaker activity lines at 15-second intervals with 60-second sliding window
   - LLM tag markers (colored dots for objective calls, shotcalls, disagreements, silence, tilt)
   - Playhead synced with YouTube player, click-to-seek on timeline
-- ✅ **Tab-based sidebar** - Switch between Sessions and Explore (transcript) views
+- ✅ **Two-mode layout** - Navigation Mode (sidebar + main area) vs Session Mode (transcript panel + video/timeline)
 - ✅ Pagination and chunk expansion (clickable text)
 
 **Chunk Interaction:**
@@ -80,8 +86,9 @@ Search is the foundation. The goal is to extract insights from team communicatio
 - ✅ **Chunk annotations** - Add coach notes to chunks (100 char limit, auto-save, searchable via full-text search)
 
 **UI/UX:**
-- ✅ **Dark theme** with purple accents
+- ✅ **Dark theme** with purple accents (Linear/Vercel aesthetic)
 - ✅ **Progressive disclosure** - Status badges, relative timestamps, collapsible panels
+- ✅ **Two-mode layout** - Navigation Mode (sidebar + main) vs Session Mode (transcript + video)
 - ✅ Chronological chunk ordering
 - ✅ Large embedded player optimized for screen sharing
 
@@ -221,8 +228,8 @@ vodcomms/
 │   └── .env.example         # Environment variables template
 ├── frontend/
 │   ├── src/
-│   │   ├── App.jsx          # Main component (~150 lines)
-│   │   ├── components/      # React components (Header, SessionsPanel, ExplorePanel, YouTubePlayer, SessionTimeline)
+│   │   ├── App.jsx          # Main component, view routing, cross-view navigation
+│   │   ├── components/      # React components (Sidebar, SessionList, SessionDetail, TranscriptPanel, ExplorePanel, YouTubePlayer, SessionTimeline)
 │   │   ├── hooks/           # Custom hooks (useAppState, useYouTubePlayer)
 │   │   ├── utils/           # Utilities (formatters, api client)
 │   │   └── styles/          # Global CSS (variables, base styles)
@@ -237,7 +244,7 @@ vodcomms/
 ## Roadmap
 
 **MVP 1.0 (✅ Complete):** Full local tool with search, transcription, time filtering, bookmarks, annotations, and LLM analysis
-**MVP 1.5 (In Progress):** Speaker assignment modal (done), speaker filtering, intensity detection, session comparison
+**MVP 1.5 (In Progress):** Speaker assignment (done), full-width Explore view (done), speaker filtering, intensity detection, session comparison
 **MVP 2.0 (Future):** Production SaaS with teams, cloud hosting, fine-tuned models, live transcription
 
 See [PRODUCT.md](docs/PRODUCT.md) for detailed roadmap and feature priorities.

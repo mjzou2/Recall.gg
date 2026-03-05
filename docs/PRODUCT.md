@@ -54,6 +54,13 @@ Most VOD tools parse **game events** (kills, objectives, gold). RECALL.GG parses
 - ✓ Copy timestamp URL to clipboard
 - ✓ Tab-based sidebar (Sessions / Explore tabs)
 - ✓ Chronological chunk ordering with minimal visual separation
+- ✓ **Full-width Explore view** — centered layout (max-width 900px), prominent search bar
+  - Session filter dropdown (search all or filter to one session)
+  - Results grouped by session with headers (title + relative date)
+  - Search term highlighting (purple `<mark>` elements)
+  - LLM tag dots + colored speaker dots on each result
+  - Cross-session navigation: click a result → enters Session Mode with video seeking
+  - State preserved across Session Mode transitions (always-mounted component)
 
 **Playback:**
 - ✓ **Embedded YouTube player with iframe API**
@@ -90,6 +97,7 @@ Most VOD tools parse **game events** (kills, objectives, gold). RECALL.GG parses
 - **Backend:** FastAPI (Python), Postgres with tsvector full-text search + pgvector semantic search, psycopg2, whisperX (whisper + alignment + diarization), sentence-transformers, Claude Haiku (LLM analysis), ffmpeg, RapidFuzz
   - Modular structure: routers (API endpoints), services (business logic), database (connection pool + queries)
 - **Frontend:** React + Vite, dark theme with purple accents (Linear/Vercel aesthetic)
+  - Two-mode layout: Navigation Mode (sidebar + main area) vs Session Mode (transcript panel + video/timeline)
   - Component-based architecture with custom hooks and CSS modules
 - **Environment:** WSL2, GPU-accelerated (CUDA 12.9), local-first (no cloud)
 - **Data:** Sessions/chunks in Postgres (Docker), uploaded media/audio in `backend/data/`
@@ -139,8 +147,9 @@ Most VOD tools parse **game events** (kills, objectives, gold). RECALL.GG parses
   - Backfill script for existing chunks: `python -m scripts.backfill_embeddings`
 - ✓ **Multi-session search** - "Find all Baron calls across last 5 scrims"
   - Search without a session selected queries all chunks across all sessions
-  - Results grouped by session, chronological within each group
-  - Results include youtube_url; player auto-switches videos on timestamp click
+  - Results grouped by session with headers (title + relative date) in Explore view
+  - Results include youtube_url; click-through navigation enters Session Mode with auto-seek
+  - Back button returns to Explore with search results preserved
 - **Session comparison** - Compare themes/patterns across multiple sessions
 - **Saved searches** - Store frequent queries for one-click access
 
@@ -180,11 +189,7 @@ Most VOD tools parse **game events** (kills, objectives, gold). RECALL.GG parses
 - **Live transcription** - Real-time searchable comms during scrims
   - Desktop app or OBS plugin to capture Discord audio
   - Incremental transcription with streaming display
-- **Timeline visualization** - Visual timeline showing:
-  - When chunks occurred (bars on timeline)
-  - Intensity/density (talking vs silence)
-  - Filtered results highlighted
-  - Think: YouTube chapter markers but for comms
+- ~~**Timeline visualization**~~ (implemented in MVP 1.5: speaker activity lines + LLM tag markers)
 - **Keyboard shortcuts** - Speed up workflow during live review
   - Space = play/pause, ←/→ = skip 5s, J/K = prev/next chunk
   - F = favorite chunk, N = add note
