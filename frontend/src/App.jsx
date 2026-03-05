@@ -7,6 +7,7 @@ import { ExplorePanel } from './components/ExplorePanel'
 import { YouTubePlayer } from './components/YouTubePlayer'
 import { SessionTimeline } from './components/SessionTimeline'
 import { SpeakerAssignmentModal } from './components/SpeakerAssignmentModal'
+import { ConfirmDialog } from './components/ConfirmDialog'
 import { Breadcrumbs } from './components/Breadcrumbs'
 import { MobileDisclaimer } from './components/MobileDisclaimer'
 import { useAppState } from './hooks/useAppState'
@@ -16,6 +17,7 @@ function App() {
   const [activeView, setActiveView] = useState('sessions')
   const [pageIndex, setPageIndex] = useState(0)
   const [showSpeakerModal, setShowSpeakerModal] = useState(false)
+  const [confirmDialog, setConfirmDialog] = useState(null)
   const speakerPromptedRef = useRef(new Set())
   const returnToViewRef = useRef(null)
   const stashedChunksRef = useRef(null)
@@ -110,6 +112,10 @@ function App() {
     }
   }, [isSessionMode, sessionDetails?.id, sessionDetails?.speaker_names, allChunks])
 
+  const showConfirm = ({ title, message, confirmLabel, confirmDanger, onConfirm }) => {
+    setConfirmDialog({ title, message, confirmLabel, confirmDanger, onConfirm })
+  }
+
   const handleSaveSpeakerNames = async (mapping) => {
     await updateSession(sessionId, { speaker_names: mapping })
     setShowSpeakerModal(false)
@@ -171,6 +177,9 @@ function App() {
               onLoadSessionDetails={loadSessionDetails}
               onCreateSession={createSession}
               onUploadMedia={uploadMedia}
+              onDeleteSession={deleteSession}
+              onProcessMedia={processMedia}
+              showConfirm={showConfirm}
             />
           )}
 
@@ -187,6 +196,7 @@ function App() {
                 onCloseSession={closeSession}
                 onUploadMedia={uploadMedia}
                 onProcessMedia={processMedia}
+                showConfirm={showConfirm}
               />
               <YouTubePlayer
                 videoUrl={currentVideoUrl || sessionDetails?.youtube_url}
@@ -225,6 +235,13 @@ function App() {
             onSave={handleSaveSpeakerNames}
             onCancel={() => setShowSpeakerModal(false)}
             onPlaySample={handleTimestampClick}
+          />
+        )}
+        {confirmDialog && (
+          <ConfirmDialog
+            {...confirmDialog}
+            onCancel={() => setConfirmDialog(null)}
+            onConfirm={() => { confirmDialog.onConfirm(); setConfirmDialog(null) }}
           />
         )}
       </div>

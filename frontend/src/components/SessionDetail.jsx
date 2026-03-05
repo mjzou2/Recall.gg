@@ -13,6 +13,7 @@ export const SessionDetail = ({
   onCloseSession,
   onUploadMedia,
   onProcessMedia,
+  showConfirm,
 }) => {
   const [isEditing, setIsEditing] = useState(false)
   const [editTitle, setEditTitle] = useState('')
@@ -81,11 +82,13 @@ export const SessionDetail = ({
   }
 
   const handleDelete = () => {
-    const confirmed = window.confirm(
-      'Delete this session? This will remove all chunks and media for it.'
-    )
-    if (!confirmed) return
-    onDeleteSession(sessionId)
+    showConfirm({
+      title: 'Delete session',
+      message: 'Delete this session? This will remove all chunks and media.',
+      confirmLabel: 'Delete',
+      confirmDanger: true,
+      onConfirm: () => onDeleteSession(sessionId),
+    })
   }
 
   return (
