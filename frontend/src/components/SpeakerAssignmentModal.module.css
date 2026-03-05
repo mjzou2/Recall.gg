@@ -10,6 +10,7 @@
   justify-content: center;
   z-index: 1000;
   backdrop-filter: blur(2px);
+  animation: fadeIn 150ms ease;
 }
 
 .modal {
@@ -22,6 +23,7 @@
   display: flex;
   flex-direction: column;
   box-shadow: 0 16px 48px rgba(0, 0, 0, 0.4);
+  animation: scaleIn 150ms ease;
 }
 
 .header {
@@ -114,7 +116,7 @@
 .nameInput:focus {
   outline: none;
   border-color: var(--purple-primary);
-  box-shadow: 0 0 0 2px var(--purple-glow);
+  box-shadow: 0 0 0 3px var(--purple-glow);
 }
 
 .nameInput::placeholder {

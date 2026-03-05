@@ -26,21 +26,10 @@ export const TranscriptPanel = ({
   const [editingChunkId, setEditingChunkId] = useState(null)
   const [editText, setEditText] = useState('')
   const [scorecardOpen, setScorecardOpen] = useState(false)
+  const [editingNoteChunkId, setEditingNoteChunkId] = useState(null)
+  const [noteText, setNoteText] = useState('')
 
   const transcriptRef = useRef(null)
-
-  // Build speaker index map (same order-of-first-appearance logic as SessionTimeline)
-  const speakerIndexMap = useMemo(() => {
-    const map = new Map()
-    let idx = 0
-    for (const chunk of chunks) {
-      const speaker = chunk.speaker || 'unknown'
-      if (!map.has(speaker)) {
-        map.set(speaker, idx++)
-      }
-    }
-    return map
-  }, [chunks])
 
   // Parse scorecard from session notes
   const scorecard = useMemo(
@@ -103,6 +92,38 @@ export const TranscriptPanel = ({
     setEditText('')
   }, [])
 
+  // Note editing
+  const handleEditNote = useCallback((chunk, chunkKey) => {
+    setEditingNoteChunkId(chunkKey)
+    setNoteText(chunk.notes || '')
+  }, [])
+
+  const handleSaveNote = useCallback(async (chunk) => {
+    if (!chunk.id) return
+    try {
+      await onUpdateChunk(chunk.id, { notes: noteText.trim() || null })
+    } catch {
+      // Error handled by parent
+    }
+    setEditingNoteChunkId(null)
+    setNoteText('')
+  }, [noteText, onUpdateChunk])
+
+  const handleCancelNote = useCallback(() => {
+    setEditingNoteChunkId(null)
+    setNoteText('')
+  }, [])
+
+  // Bookmark toggle
+  const handleToggleBookmark = useCallback(async (chunk) => {
+    if (!chunk.id) return
+    try {
+      await onUpdateChunk(chunk.id, { is_bookmarked: chunk.is_bookmarked ? 0 : 1 })
+    } catch {
+      // Error handled by parent
+    }
+  }, [onUpdateChunk])
+
   // Auto-scroll to active chunk
   useEffect(() => {
     if (!activeChunkId || !autoScrollEnabled || !transcriptRef.current) return
@@ -160,17 +181,32 @@ export const TranscriptPanel = ({
           </button>
           {scorecardOpen && (
             <div className={styles.scorecardBody}>
-              {Object.entries(scorecard).map(([category, score]) => (
-                <div key={category} className={styles.scorecardRow}>
-                  <span className={styles.scorecardCategory}>{category}</span>
-                  <span
-                    className={styles.scorecardScore}
-                    style={{ color: getScoreColor(score) }}
-                  >
-                    {score}/10
-                  </span>
-                </div>
-              ))}
+              {Object.entries(scorecard).map(([category, score]) => {
+                const color = getScoreColor(score)
+                return (
+                  <div key={category} className={styles.scorecardRow}>
+                    <div className={styles.scorecardRowTop}>
+                      <span className={styles.scorecardCategory}>{category}</span>
+                      <span
+                        className={styles.scorecardScore}
+                        style={{ color }}
+                      >
+                        {score}/10
+                      </span>
+                    </div>
+                    <div className={styles.scoreBar}>
+                      <div
+                        className={styles.scoreBarFill}
+                        style={{
+                          width: `${(score / 10) * 100}%`,
+                          background: color,
+                          opacity: 0.5,
+                        }}
+                      />
+                    </div>
+                  </div>
+                )
+              })}
             </div>
           )}
         </div>
@@ -212,11 +248,13 @@ export const TranscriptPanel = ({
           const chunkKey =
             chunk.id ?? `${chunk.start_ms}-${chunk.end_ms}-${chunk.text?.length ?? 0}`
           const tag = getChunkTag(chunk)
-          const speakerIdx = speakerIndexMap.get(chunk.speaker || 'unknown') ?? 0
+          const speakerIdx = parseInt(chunk.speaker?.match(/(\d+)/)?.[1] ?? '0', 10)
           const speakerColor = getSpeakerColor(speakerIdx)
           const displayName = getSpeakerDisplayName(chunk.speaker, sessionDetails?.speaker_names)
           const isActive = chunkKey === activeChunkId
           const isEditing = editingChunkId === chunkKey
+          const isEditingNote = editingNoteChunkId === chunkKey
+          const hasNote = chunk.notes && !TAG_PATTERN.test(chunk.notes.split('\n')[0]?.trim())
 
           return (
             <div
@@ -277,6 +315,59 @@ export const TranscriptPanel = ({
                 >
                   {chunk.text}
                 </span>
+              )}
+
+              {/* Inline action icons */}
+              <span className={styles.chunkActions}>
+                <button
+                  className={`${styles.chunkActionBtn} ${chunk.is_bookmarked ? styles.alwaysVisible : styles.hoverVisible}`}
+                  onClick={() => handleToggleBookmark(chunk)}
+                  title={chunk.is_bookmarked ? 'Remove bookmark' : 'Bookmark'}
+                >
+                  {chunk.is_bookmarked ? '⭐' : '☆'}
+                </button>
+                <button
+                  className={`${styles.chunkActionBtn} ${hasNote || chunk.notes ? styles.alwaysVisible : styles.hoverVisible}`}
+                  onClick={() => handleEditNote(chunk, chunkKey)}
+                  title={chunk.notes ? 'Edit note' : 'Add note'}
+                >
+                  {chunk.notes ? '📝' : '✏️'}
+                </button>
+              </span>
+
+              {/* Note editing row */}
+              {isEditingNote && (
+                <div className={styles.noteRow}>
+                  <textarea
+                    className={styles.noteTextarea}
+                    value={noteText}
+                    onChange={(e) => setNoteText(e.target.value)}
+                    onBlur={() => handleSaveNote(chunk)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault()
+                        handleSaveNote(chunk)
+                      } else if (e.key === 'Escape') {
+                        handleCancelNote()
+                      }
+                    }}
+                    maxLength={100}
+                    rows={2}
+                    placeholder="Add note..."
+                    autoFocus
+                  />
+                </div>
+              )}
+
+              {/* Note display */}
+              {!isEditingNote && chunk.notes && hasNote && (
+                <div
+                  className={styles.noteDisplay}
+                  onClick={() => handleEditNote(chunk, chunkKey)}
+                  title="Click to edit note"
+                >
+                  {chunk.notes}
+                </div>
               )}
             </div>
           )

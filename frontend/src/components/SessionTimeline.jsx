@@ -200,17 +200,20 @@ export const SessionTimeline = ({ chunks, youtubePlayer, loadVideo, currentVideo
           <YAxis domain={[0, yMax]} hide />
           <Tooltip content={renderTooltip} wrapperStyle={{ display: 'none' }} />
 
-          {speakers.map((speaker, i) => (
+          {speakers.map((speaker) => {
+            const speakerIdx = parseInt(speaker.match(/(\d+)/)?.[1] ?? '0', 10)
+            return (
             <Line
               key={speaker}
               type="monotone"
               dataKey={speaker}
-              stroke={getSpeakerColor(i)}
+              stroke={getSpeakerColor(speakerIdx)}
               strokeWidth={1.5}
               dot={false}
               activeDot={{ r: 3 }}
             />
-          ))}
+            )
+          })}
 
           {currentTime > 0 && (
             <ReferenceLine

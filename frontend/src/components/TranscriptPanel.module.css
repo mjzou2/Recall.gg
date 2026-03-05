@@ -7,6 +7,7 @@
   background: var(--sidebar-bg);
   border-right: 1px solid var(--border-subtle);
   overflow: hidden;
+  animation: fadeSlideIn 150ms ease;
 }
 
 /* Top bar */
@@ -132,13 +133,6 @@
   gap: 0.375rem;
 }
 
-.scorecardRow {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 0.75rem;
-}
-
 .scorecardCategory {
   color: var(--text-tertiary);
 }
@@ -173,7 +167,7 @@
 .filterInput:focus {
   outline: none;
   border-color: var(--purple-primary);
-  box-shadow: 0 0 0 2px var(--purple-glow);
+  box-shadow: 0 0 0 3px var(--purple-glow);
 }
 
 .filterInput::placeholder {
@@ -226,12 +220,13 @@
 /* Chunk row */
 .chunkRow {
   display: flex;
-  align-items: flex-start;
+  align-items: baseline;
   gap: 0.375rem;
   padding: 0.375rem 1rem;
   padding-left: calc(1rem - 2px);
   border-left: 2px solid transparent;
   transition: background 0.15s ease;
+  flex-wrap: wrap;
 }
 
 .chunkRow:hover {
@@ -247,13 +242,16 @@
   background: rgba(124, 58, 237, 0.1);
 }
 
-/* Tag dot */
+/* Tag dot — needs special alignment since baseline doesn't work for non-text */
 .tagDot {
+  display: inline-block;
   width: 6px;
   height: 6px;
   border-radius: 50%;
   flex-shrink: 0;
-  margin-top: 0.4375rem;
+  vertical-align: middle;
+  position: relative;
+  top: -1px;
 }
 
 /* Timestamp */
@@ -296,6 +294,9 @@
   line-height: 1.4;
   cursor: default;
   word-break: break-word;
+  flex: 1;
+  min-width: 0;
+  transition: color 0.15s ease;
 }
 
 .chunkText:hover {
@@ -305,6 +306,8 @@
 /* Edit textarea */
 .editTextarea {
   flex: 1;
+  min-width: 0;
+  align-self: stretch;
   min-height: 3rem;
   padding: 0.375rem 0.5rem;
   border-radius: 4px;
@@ -319,5 +322,122 @@
 
 .editTextarea:focus {
   outline: none;
-  box-shadow: 0 0 0 2px var(--purple-glow);
+  box-shadow: 0 0 0 3px var(--purple-glow);
+}
+
+/* Chunk action buttons (bookmark, note) */
+.chunkActions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.125rem;
+  margin-left: 0.375rem;
+  flex-shrink: 0;
+}
+
+.chunkActionBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  font-size: 0.6875rem;
+  cursor: pointer;
+  transition: opacity 0.15s ease, background 0.15s ease;
+  box-shadow: none;
+  transform: none;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.chunkActionBtn:hover {
+  background: rgba(255, 255, 255, 0.06);
+  transform: none;
+  box-shadow: none;
+}
+
+.hoverVisible {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.chunkRow:hover .hoverVisible {
+  opacity: 0.6;
+  pointer-events: auto;
+}
+
+.alwaysVisible {
+  opacity: 0.6;
+  pointer-events: auto;
+}
+
+/* Note editing row (full width below chunk line) */
+.noteRow {
+  width: 100%;
+  padding: 0.375rem 0 0.25rem 0;
+}
+
+.noteTextarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.375rem 0.5rem;
+  border-radius: 4px;
+  border: 1px solid var(--border-medium);
+  background: var(--bg-base);
+  color: var(--text-primary);
+  font-size: 0.75rem;
+  font-family: inherit;
+  resize: none;
+  line-height: 1.4;
+  transition: border-color 0.15s ease;
+}
+
+.noteTextarea:focus {
+  outline: none;
+  border-color: var(--purple-primary);
+  box-shadow: 0 0 0 3px var(--purple-glow);
+}
+
+.noteDisplay {
+  width: 100%;
+  padding: 0.25rem 0;
+  font-size: 0.6875rem;
+  color: var(--text-tertiary);
+  font-style: italic;
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+.noteDisplay:hover {
+  color: var(--text-secondary);
+}
+
+/* Scorecard bar */
+.scorecardRow {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.75rem;
+}
+
+.scorecardRowTop {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.scoreBar {
+  height: 3px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+}
+
+.scoreBarFill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.3s ease;
 }

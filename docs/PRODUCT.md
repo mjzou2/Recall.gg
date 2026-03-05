@@ -99,6 +99,7 @@ Most VOD tools parse **game events** (kills, objectives, gold). RECALL.GG parses
 - **Frontend:** React + Vite, dark theme with purple accents (Linear/Vercel aesthetic)
   - Two-mode layout: Navigation Mode (sidebar + main area) vs Session Mode (transcript panel + video/timeline)
   - Component-based architecture with custom hooks and CSS modules
+  - Polished UI: breadcrumbs, view transitions, consistent focus rings, mobile disclaimer, inline scorecard bars
 - **Environment:** WSL2, GPU-accelerated (CUDA 12.9), local-first (no cloud)
 - **Data:** Sessions/chunks in Postgres (Docker), uploaded media/audio in `backend/data/`
 

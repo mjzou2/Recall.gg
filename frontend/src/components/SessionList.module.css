@@ -2,6 +2,7 @@
   display: flex;
   flex-direction: column;
   height: 100%;
+  animation: fadeIn 150ms ease;
 }
 
 /* Toolbar */
@@ -124,7 +125,7 @@
 .formInput:focus {
   outline: none;
   border-color: var(--purple-primary);
-  box-shadow: 0 0 0 2px var(--purple-glow);
+  box-shadow: 0 0 0 3px var(--purple-glow);
 }
 
 .formFileInput {
@@ -232,12 +233,13 @@
   font-size: 0.875rem;
   text-align: left;
   cursor: pointer;
-  transition: background 0.1s ease, border-color 0.1s ease;
+  transition: background 0.15s ease, border-color 0.15s ease;
   box-shadow: none;
 }
 
 .row:hover {
   background: rgba(255, 255, 255, 0.02);
+  border-left-color: rgba(124, 58, 237, 0.3);
   transform: none;
   box-shadow: none;
 }
@@ -351,8 +353,10 @@
 }
 
 .emptyIcon {
-  font-size: 3rem;
-  opacity: 0.2;
+  width: 3rem;
+  height: 3rem;
+  color: var(--text-tertiary);
+  opacity: 0.3;
   margin-bottom: 0.75rem;
 }
 

@@ -83,8 +83,8 @@ export const SpeakerAssignmentModal = ({
         </p>
 
         <div className={styles.body}>
-          {speakers.map((speaker, i) => {
-            const color = getSpeakerColor(i)
+          {speakers.map((speaker) => {
+            const color = getSpeakerColor(speaker.displayIndex)
             const sample = findSampleChunk(speaker.label)
 
             return (

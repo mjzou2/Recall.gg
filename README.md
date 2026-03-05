@@ -87,6 +87,9 @@ Search is the foundation. The goal is to extract insights from team communicatio
 
 **UI/UX:**
 - ✅ **Dark theme** with purple accents (Linear/Vercel aesthetic)
+- ✅ **Breadcrumbs** - "Sessions / [Session Name]" navigation bar in Session Mode
+- ✅ **Mobile disclaimer** - Full-screen message for viewports below 768px
+- ✅ **View transitions** - Smooth fadeIn/fadeSlideIn on view changes, scaleIn on modal open
 - ✅ **Progressive disclosure** - Status badges, relative timestamps, collapsible panels
 - ✅ **Two-mode layout** - Navigation Mode (sidebar + main) vs Session Mode (transcript + video)
 - ✅ Chronological chunk ordering
@@ -229,7 +232,7 @@ vodcomms/
 ├── frontend/
 │   ├── src/
 │   │   ├── App.jsx          # Main component, view routing, cross-view navigation
-│   │   ├── components/      # React components (Sidebar, SessionList, SessionDetail, TranscriptPanel, ExplorePanel, YouTubePlayer, SessionTimeline)
+│   │   ├── components/      # React components (Sidebar, SessionList, SessionDetail, TranscriptPanel, ExplorePanel, YouTubePlayer, SessionTimeline, Breadcrumbs, MobileDisclaimer)
 │   │   ├── hooks/           # Custom hooks (useAppState, useYouTubePlayer)
 │   │   ├── utils/           # Utilities (formatters, api client)
 │   │   └── styles/          # Global CSS (variables, base styles)

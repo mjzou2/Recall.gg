@@ -1,0 +1,50 @@
+.breadcrumbs {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1.25rem;
+  border-bottom: 1px solid var(--border-subtle);
+  flex-shrink: 0;
+  animation: fadeIn 150ms ease;
+}
+
+.segment {
+  background: transparent;
+  border: none;
+  padding: 0;
+  color: var(--text-tertiary);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: color 0.15s ease;
+  box-shadow: none;
+  transform: none;
+}
+
+.segment:hover {
+  color: var(--purple-primary);
+  background: transparent;
+  transform: none;
+  box-shadow: none;
+  text-decoration: underline;
+}
+
+.separator {
+  color: var(--text-tertiary);
+  font-size: 0.75rem;
+  opacity: 0.5;
+}
+
+.current {
+  color: var(--text-secondary);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
