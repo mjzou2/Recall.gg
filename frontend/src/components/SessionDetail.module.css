@@ -99,7 +99,7 @@
 
 .statusBadge.created {
   background: rgba(113, 113, 122, 0.15);
-  color: #A1A1AA;
+  color: #9CA3AF;
 }
 
 .statusBadge.uploaded {
@@ -154,14 +154,14 @@
 }
 
 .metaLink:hover {
-  color: #A78BFA;
+  color: #26C6DA;
   text-decoration: underline;
 }
 
 /* Notes */
 .notesDisplay {
   padding: 0.5rem 0.625rem;
-  background: rgba(124, 58, 237, 0.04);
+  background: rgba(0, 184, 212, 0.04);
   border-radius: 6px;
   border-left: 2px solid var(--purple-primary);
   cursor: pointer;
@@ -170,7 +170,7 @@
 }
 
 .notesDisplay:hover {
-  background: rgba(124, 58, 237, 0.08);
+  background: rgba(0, 184, 212, 0.08);
 }
 
 .notesContent {
@@ -191,7 +191,7 @@
 }
 
 .notesEmpty:hover {
-  background: rgba(124, 58, 237, 0.04);
+  background: rgba(0, 184, 212, 0.04);
   border-left-color: var(--purple-primary);
 }
 
@@ -256,26 +256,63 @@
   color: var(--text-tertiary);
 }
 
-.formFileInput {
-  font-size: 0.8125rem;
-  color: var(--text-secondary);
+.formFileInputHidden {
+  display: none;
 }
 
-.formFileInput::file-selector-button {
-  background: var(--bg-hover);
-  color: var(--text-primary);
+.fileRow {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+}
+
+.fileChooseBtn {
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
   border: 1px solid var(--border-medium);
-  padding: 0.3125rem 0.625rem;
-  border-radius: 5px;
-  font-size: 0.8125rem;
+  background: var(--bg-base);
+  color: var(--text-primary);
+  font-size: 0.875rem;
   font-weight: 500;
   cursor: pointer;
-  margin-right: 0.5rem;
-  transition: background 0.15s ease;
+  white-space: nowrap;
+  transition: border-color 0.15s ease, background 0.15s ease;
+  box-shadow: none;
 }
 
-.formFileInput::file-selector-button:hover {
-  background: var(--bg-elevated);
+.fileChooseBtn:hover {
+  border-color: var(--text-tertiary);
+  background: var(--bg-hover);
+  transform: none;
+  box-shadow: none;
+}
+
+.fileAccentBtn {
+  composes: fileChooseBtn;
+  background: var(--purple-primary);
+  border: none;
+  color: white;
+}
+
+.fileAccentBtn:hover {
+  background: var(--purple-secondary);
+  border: none;
+  transform: none;
+  box-shadow: none;
+}
+
+.fileAccentBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.fileName {
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
 }
 
 .uploadActions {

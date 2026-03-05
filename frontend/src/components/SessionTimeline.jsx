@@ -193,7 +193,7 @@ export const SessionTimeline = ({ chunks, youtubePlayer, loadVideo, currentVideo
             dataKey="time_s"
             tickFormatter={formatTimeAxis}
             stroke="var(--text-tertiary)"
-            tick={{ fontSize: 11, fill: '#71717A' }}
+            tick={{ fontSize: 11, fill: '#6B7280' }}
             axisLine={{ stroke: 'rgba(255,255,255,0.08)' }}
             tickLine={{ stroke: 'rgba(255,255,255,0.08)' }}
           />
@@ -218,7 +218,7 @@ export const SessionTimeline = ({ chunks, youtubePlayer, loadVideo, currentVideo
           {currentTime > 0 && (
             <ReferenceLine
               x={currentTime}
-              stroke="#7C3AED"
+              stroke="#00B8D4"
               strokeDasharray="3 3"
               strokeWidth={1.5}
             />

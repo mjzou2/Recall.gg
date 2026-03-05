@@ -24,6 +24,7 @@ class SessionResponse(BaseModel):
     audio_path: Optional[str] = None
     created_at: str
     processing_duration_seconds: Optional[int] = None
+    duration_ms: Optional[int] = None
     notes: Optional[str] = None
     speaker_names: Optional[dict] = None
 

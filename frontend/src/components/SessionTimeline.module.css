@@ -61,7 +61,7 @@
   height: 8px;
   border-radius: 50%;
   transform: translateX(-50%);
-  border: 1.5px solid #18181B;
+  border: 1.5px solid #141416;
   cursor: pointer;
   z-index: 1;
 }

@@ -200,13 +200,16 @@ def process_media(session_id: str) -> Dict:
             except Exception as llm_exc:
                 print(f"LLM analysis failed (non-fatal): {llm_exc}")
 
+        # Compute session duration from chunk timestamps
+        session_duration_ms = max(row[3] for row in chunk_rows) if chunk_rows else None
+
         # Update session status to ready
         conn = get_conn()
         try:
             with conn.cursor() as cur:
                 cur.execute(
-                    "UPDATE sessions SET status = 'ready', audio_path = %s, processing_duration_seconds = %s WHERE id = %s",
-                    (str(audio_path), duration_seconds, session_id),
+                    "UPDATE sessions SET status = 'ready', audio_path = %s, processing_duration_seconds = %s, duration_ms = %s WHERE id = %s",
+                    (str(audio_path), duration_seconds, session_duration_ms, session_id),
                 )
             conn.commit()
         finally:

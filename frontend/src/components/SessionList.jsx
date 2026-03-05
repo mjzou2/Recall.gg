@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import styles from './SessionList.module.css'
 import * as formatters from '../utils/formatters'
 
@@ -13,6 +13,7 @@ export const SessionList = ({
   onUploadMedia,
   onDeleteSession,
   onProcessMedia,
+  onUpdateSession,
   showConfirm,
 }) => {
   const [isCreatingNew, setIsCreatingNew] = useState(false)
@@ -20,6 +21,7 @@ export const SessionList = ({
   const [youtubeUrl, setYoutubeUrl] = useState('')
   const [file, setFile] = useState(null)
   const [isCreating, setIsCreating] = useState(false)
+  const fileInputRef = useRef(null)
 
   // Filter
   const [filterQuery, setFilterQuery] = useState('')
@@ -34,6 +36,13 @@ export const SessionList = ({
 
   // Context menu
   const [contextMenu, setContextMenu] = useState(null)
+
+  // Inline editing
+  const [editingSessionId, setEditingSessionId] = useState(null)
+  const [editTitle, setEditTitle] = useState('')
+  const [editYoutubeUrl, setEditYoutubeUrl] = useState('')
+  const [editNotes, setEditNotes] = useState('')
+  const [isSaving, setIsSaving] = useState(false)
 
   // Clear selection when filter changes
   useEffect(() => setSelectedIds(new Set()), [filterQuery])
@@ -72,7 +81,7 @@ export const SessionList = ({
         cmp = (a.created_at || '').localeCompare(b.created_at || '')
         break
       case 'duration':
-        cmp = (a.processing_duration_seconds ?? -1) - (b.processing_duration_seconds ?? -1)
+        cmp = (a.duration_ms ?? -1) - (b.duration_ms ?? -1)
         break
       case 'status':
         cmp = (a.status || '').localeCompare(b.status || '')
@@ -151,6 +160,38 @@ export const SessionList = ({
         onLoadSessions()
       },
     })
+  }
+
+  // Inline edit handlers
+  const openInlineEdit = (session) => {
+    setEditingSessionId(session.id)
+    setEditTitle(session.title || '')
+    setEditYoutubeUrl(session.youtube_url || '')
+    setEditNotes((session.notes || '').slice(0, 500))
+  }
+
+  const closeInlineEdit = () => {
+    setEditingSessionId(null)
+    setEditTitle('')
+    setEditYoutubeUrl('')
+    setEditNotes('')
+  }
+
+  const handleInlineSave = async () => {
+    if (!editingSessionId) return
+    setIsSaving(true)
+    try {
+      await onUpdateSession(editingSessionId, {
+        title: editTitle.trim() || null,
+        youtube_url: editYoutubeUrl.trim() || null,
+        notes: editNotes.trim() || null,
+      })
+      closeInlineEdit()
+    } catch {
+      // Error handled by parent
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   const renderScoreBadge = (session) => {
@@ -238,14 +279,27 @@ export const SessionList = ({
                   className={styles.formInput}
                 />
               </label>
-              <label className={styles.formField}>
+              <div className={styles.formField}>
                 <span className={styles.formLabel}>Audio/Video file</span>
                 <input
+                  ref={fileInputRef}
                   type="file"
                   onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-                  className={styles.formFileInput}
+                  className={styles.formFileInputHidden}
                 />
-              </label>
+                <div className={styles.fileRow}>
+                  <button
+                    type="button"
+                    className={styles.fileChooseBtn}
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    Choose File
+                  </button>
+                  <span className={styles.fileName}>
+                    {file ? file.name : 'No file chosen'}
+                  </span>
+                </div>
+              </div>
             </div>
             <div className={styles.formActions}>
               <button type="submit" className={styles.createBtn} disabled={isCreating || isUploading}>
@@ -277,7 +331,7 @@ export const SessionList = ({
         </label>
         <span className={styles.colHeader} onClick={() => handleSort('name')}>
           Name {renderSortArrow('name')}
-          <span className={styles.listCount}> · {filteredSessions.length} sessions</span>
+          <span className={styles.listCount}> · {filterQuery ? `${filteredSessions.length} of ${sessions.length}` : filteredSessions.length} sessions</span>
         </span>
         <span className={styles.colHeader} onClick={() => handleSort('date')}>
           Date {renderSortArrow('date')}
@@ -296,42 +350,99 @@ export const SessionList = ({
       {/* Session rows */}
       <div className={`${styles.list} ${selectedIds.size > 0 ? styles.hasSelection : ''}`}>
         {sortedSessions.map((session) => (
-          <button
-            key={session.id}
-            className={`${styles.row} ${session.id === sessionId ? styles.active : ''}`}
-            onClick={() => onLoadSessionDetails(session.id)}
-            onContextMenu={(e) => handleContextMenu(e, session)}
-          >
-            <label className={styles.checkboxCell} onClick={(e) => e.stopPropagation()}>
-              <input
-                type="checkbox"
-                className={styles.checkbox}
-                checked={selectedIds.has(session.id)}
-                onChange={(e) => {
-                  const next = new Set(selectedIds)
-                  e.target.checked ? next.add(session.id) : next.delete(session.id)
-                  setSelectedIds(next)
-                }}
-              />
-            </label>
-            <span className={styles.cellName}>
-              {session.title || 'Untitled session'}
-            </span>
-            <span className={styles.cellDate}>
-              {formatters.formatRelativeTime(session.created_at)}
-            </span>
-            <span className={styles.cellDuration}>
-              {session.processing_duration_seconds != null
-                ? formatters.formatDuration(session.processing_duration_seconds)
-                : '--'}
-            </span>
-            <span className={`${styles.statusBadge} ${styles[session.status]}`}>
-              {formatters.getStatusDisplay(session.status)}
-            </span>
-            <span className={styles.cellScore}>
-              {renderScoreBadge(session)}
-            </span>
-          </button>
+          <div key={session.id}>
+            <button
+              className={`${styles.row} ${session.id === sessionId ? styles.active : ''} ${session.id === editingSessionId ? styles.editing : ''}`}
+              onClick={() => onLoadSessionDetails(session.id)}
+              onContextMenu={(e) => handleContextMenu(e, session)}
+            >
+              <label className={styles.checkboxCell} onClick={(e) => e.stopPropagation()}>
+                <input
+                  type="checkbox"
+                  className={styles.checkbox}
+                  checked={selectedIds.has(session.id)}
+                  onChange={(e) => {
+                    const next = new Set(selectedIds)
+                    e.target.checked ? next.add(session.id) : next.delete(session.id)
+                    setSelectedIds(next)
+                  }}
+                />
+              </label>
+              <span className={styles.cellName}>
+                {session.title || 'Untitled session'}
+                <button
+                  className={styles.editIcon}
+                  onClick={(e) => { e.stopPropagation(); openInlineEdit(session) }}
+                  title="Edit session"
+                >
+                  <svg width="12" height="12" viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M2.695 14.763l-1.262 3.154a.5.5 0 00.65.65l3.155-1.262a4 4 0 001.343-.885L17.5 5.5a2.121 2.121 0 00-3-3L3.58 13.42a4 4 0 00-.885 1.343z" />
+                  </svg>
+                </button>
+              </span>
+              <span className={styles.cellDate}>
+                {formatters.formatRelativeTime(session.created_at)}
+              </span>
+              <span className={styles.cellDuration}>
+                {session.duration_ms != null
+                  ? formatters.formatTime(session.duration_ms)
+                  : '--'}
+              </span>
+              <span className={`${styles.statusBadge} ${styles[session.status]}`}>
+                {formatters.getStatusDisplay(session.status)}
+              </span>
+              <span className={styles.cellScore}>
+                {renderScoreBadge(session)}
+              </span>
+            </button>
+
+            {/* Inline edit form */}
+            {editingSessionId === session.id && (
+              <div className={styles.inlineEditForm} onClick={(e) => e.stopPropagation()}>
+                <div className={styles.inlineEditGrid}>
+                  <label className={styles.formField}>
+                    <span className={styles.formLabel}>Title</span>
+                    <input
+                      type="text"
+                      value={editTitle}
+                      onChange={(e) => setEditTitle(e.target.value)}
+                      className={styles.formInput}
+                      autoFocus
+                    />
+                  </label>
+                  <label className={styles.formField}>
+                    <span className={styles.formLabel}>YouTube URL</span>
+                    <input
+                      type="url"
+                      value={editYoutubeUrl}
+                      onChange={(e) => setEditYoutubeUrl(e.target.value)}
+                      className={styles.formInput}
+                    />
+                  </label>
+                </div>
+                <label className={styles.formField}>
+                  <span className={styles.formLabel}>
+                    Notes <span className={styles.charCount}>({Math.max(0, 500 - editNotes.length)} chars left)</span>
+                  </span>
+                  <textarea
+                    value={editNotes}
+                    onChange={(e) => setEditNotes(e.target.value)}
+                    maxLength={500}
+                    rows={3}
+                    className={styles.formTextarea}
+                  />
+                </label>
+                <div className={styles.formActions}>
+                  <button className={styles.createBtn} onClick={handleInlineSave} disabled={isSaving}>
+                    {isSaving ? 'Saving...' : 'Save'}
+                  </button>
+                  <button className={styles.cancelBtn} onClick={closeInlineEdit}>
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         ))}
 
         {sessions.length === 0 && !isCreatingNew && (
@@ -368,7 +479,7 @@ export const SessionList = ({
           <button className={styles.contextItem} onClick={() => { onLoadSessionDetails(contextMenu.session.id); setContextMenu(null) }}>
             Open
           </button>
-          <button className={styles.contextItem} onClick={() => { onLoadSessionDetails(contextMenu.session.id); setContextMenu(null) }}>
+          <button className={styles.contextItem} onClick={() => { openInlineEdit(contextMenu.session); setContextMenu(null) }}>
             Edit
           </button>
           <button

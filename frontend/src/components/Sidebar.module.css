@@ -77,7 +77,7 @@
 
 .navItem.active {
   color: var(--text-primary);
-  background: rgba(124, 58, 237, 0.08);
+  background: rgba(0, 184, 212, 0.08);
   border-left: 2px solid var(--purple-primary);
   padding-left: calc(0.625rem - 2px);
 }

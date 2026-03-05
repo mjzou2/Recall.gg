@@ -70,6 +70,7 @@ def init_storage() -> None:
                 ("processing_duration_seconds", "INTEGER"),
                 ("notes", "TEXT"),
                 ("speaker_names", "JSONB"),
+                ("duration_ms", "INTEGER"),
             ]:
                 cur.execute("""
                     SELECT 1 FROM information_schema.columns

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import styles from './SessionDetail.module.css'
 import * as formatters from '../utils/formatters'
 
@@ -14,6 +14,8 @@ export const SessionDetail = ({
   onUploadMedia,
   onProcessMedia,
   showConfirm,
+  openInEditMode,
+  onEditModeUsed,
 }) => {
   const [isEditing, setIsEditing] = useState(false)
   const [editTitle, setEditTitle] = useState('')
@@ -22,13 +24,23 @@ export const SessionDetail = ({
   const [isEditingNotes, setIsEditingNotes] = useState(false)
   const [notesText, setNotesText] = useState('')
   const [file, setFile] = useState(null)
+  const fileInputRef = useRef(null)
+
+  useEffect(() => {
+    if (openInEditMode && sessionDetails) {
+      setEditTitle(sessionDetails.title || '')
+      setEditYoutubeUrl(sessionDetails.youtube_url || '')
+      setEditNotes((sessionDetails.notes || '').slice(0, 500))
+      setIsEditing(true)
+    }
+  }, [openInEditMode, sessionDetails?.id])
 
   if (!sessionDetails) return null
 
   const handleEdit = () => {
     setEditTitle(sessionDetails.title || '')
     setEditYoutubeUrl(sessionDetails.youtube_url || '')
-    setEditNotes(sessionDetails.notes || '')
+    setEditNotes((sessionDetails.notes || '').slice(0, 500))
     setIsEditing(true)
   }
 
@@ -37,6 +49,10 @@ export const SessionDetail = ({
     setEditTitle('')
     setEditYoutubeUrl('')
     setEditNotes('')
+    if (openInEditMode) {
+      onEditModeUsed?.()
+      onCloseSession()
+    }
   }
 
   const handleSave = async () => {
@@ -47,6 +63,10 @@ export const SessionDetail = ({
         notes: editNotes.trim() || null,
       })
       setIsEditing(false)
+      if (openInEditMode) {
+        onEditModeUsed?.()
+        onCloseSession()
+      }
     } catch {
       // Error handled by parent
     }
@@ -87,13 +107,13 @@ export const SessionDetail = ({
       message: 'Delete this session? This will remove all chunks and media.',
       confirmLabel: 'Delete',
       confirmDanger: true,
-      onConfirm: () => onDeleteSession(sessionId),
+      onConfirm: () => { onEditModeUsed?.(); onDeleteSession(sessionId) },
     })
   }
 
   return (
     <div className={styles.container}>
-      <button className={styles.backBtn} onClick={onCloseSession}>
+      <button className={styles.backBtn} onClick={() => { onEditModeUsed?.(); onCloseSession() }}>
         <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
           <path fillRule="evenodd" d="M17 10a.75.75 0 01-.75.75H5.612l4.158 3.96a.75.75 0 11-1.04 1.08l-5.5-5.25a.75.75 0 010-1.08l5.5-5.25a.75.75 0 111.04 1.08L5.612 9.25H16.25A.75.75 0 0117 10z" clipRule="evenodd" />
         </svg>
@@ -123,12 +143,12 @@ export const SessionDetail = ({
           </label>
           <label className={styles.formField}>
             <span className={styles.formLabel}>
-              Notes <span className={styles.charCount}>({150 - editNotes.length} chars left)</span>
+              Notes <span className={styles.charCount}>({Math.max(0, 500 - editNotes.length)} chars left)</span>
             </span>
             <textarea
               value={editNotes}
               onChange={(e) => setEditNotes(e.target.value)}
-              maxLength={150}
+              maxLength={500}
               rows={2}
               className={styles.formTextarea}
             />
@@ -159,11 +179,19 @@ export const SessionDetail = ({
             <span className={styles.metaItem}>
               {formatters.formatRelativeTime(sessionDetails.created_at)}
             </span>
+            {sessionDetails.duration_ms != null && (
+              <>
+                <span className={styles.metaSep}>·</span>
+                <span className={styles.metaItem}>
+                  {formatters.formatTime(sessionDetails.duration_ms)}
+                </span>
+              </>
+            )}
             {sessionDetails.processing_duration_seconds != null && (
               <>
                 <span className={styles.metaSep}>·</span>
                 <span className={styles.metaItem}>
-                  {formatters.formatDuration(sessionDetails.processing_duration_seconds)}
+                  Processed in {formatters.formatDuration(sessionDetails.processing_duration_seconds)}
                 </span>
               </>
             )}
@@ -205,7 +233,7 @@ export const SessionDetail = ({
                     handleCancelNotes()
                   }
                 }}
-                maxLength={150}
+                maxLength={500}
                 rows={2}
                 placeholder="Add session notes..."
                 className={styles.notesTextarea}
@@ -228,32 +256,43 @@ export const SessionDetail = ({
               <p className={styles.uploadHint}>Upload a video or audio file to get started</p>
             )}
             <form className={styles.uploadForm} onSubmit={handleUpload}>
-              <label className={styles.fileField}>
+              <div className={styles.fileField}>
                 <span className={styles.formLabel}>
                   {sessionDetails.media_path ? 'Replace media' : 'Choose file'}
                 </span>
                 <input
+                  ref={fileInputRef}
                   type="file"
                   onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-                  className={styles.formFileInput}
+                  className={styles.formFileInputHidden}
                 />
-              </label>
-              <div className={styles.uploadActions}>
-                <button type="submit" className={styles.uploadBtn} disabled={isUploading || !file}>
-                  {isUploading ? 'Uploading...' : 'Upload'}
-                </button>
-                {sessionDetails.media_path && (
+                <div className={styles.fileRow}>
                   <button
                     type="button"
-                    className={styles.processBtn}
-                    onClick={() => onProcessMedia(sessionId)}
-                    disabled={isProcessing}
+                    className={styles.fileChooseBtn}
+                    onClick={() => fileInputRef.current?.click()}
                   >
-                    {isProcessing
-                      ? `Processing... ${formatters.formatTime(elapsedSeconds * 1000)}`
-                      : 'Process'}
+                    Choose File
                   </button>
-                )}
+                  <button type="submit" className={styles.fileAccentBtn} disabled={isUploading || !file}>
+                    {isUploading ? 'Uploading...' : 'Upload'}
+                  </button>
+                  {sessionDetails.media_path && (
+                    <button
+                      type="button"
+                      className={styles.fileChooseBtn}
+                      onClick={() => onProcessMedia(sessionId)}
+                      disabled={isProcessing}
+                    >
+                      {isProcessing
+                        ? `Processing... ${formatters.formatTime(elapsedSeconds * 1000)}`
+                        : 'Process'}
+                    </button>
+                  )}
+                  <span className={styles.fileName}>
+                    {file ? file.name : !sessionDetails.media_path ? 'No file chosen' : ''}
+                  </span>
+                </div>
               </div>
             </form>
           </div>

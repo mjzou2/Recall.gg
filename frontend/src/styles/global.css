@@ -25,12 +25,12 @@ body {
 
 /* Text selection */
 ::selection {
-  background: rgba(124, 58, 237, 0.4);
+  background: rgba(0, 184, 212, 0.4);
   color: white;
 }
 
 ::-moz-selection {
-  background: rgba(124, 58, 237, 0.4);
+  background: rgba(0, 184, 212, 0.4);
   color: white;
 }
 
@@ -170,13 +170,13 @@ select {
   font-size: 0.9375rem;
   cursor: pointer;
   transition: all 0.2s ease;
-  box-shadow: 0 2px 8px rgba(124, 58, 237, 0.3);
+  box-shadow: none;
 }
 
 button:hover {
   background: var(--purple-secondary);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(124, 58, 237, 0.4);
+  transform: none;
+  box-shadow: none;
 }
 
 button:disabled {

@@ -48,7 +48,7 @@
 
 .createSessionBtn:hover {
   border-color: var(--purple-primary);
-  background: rgba(124, 58, 237, 0.04);
+  background: rgba(0, 184, 212, 0.04);
   color: var(--purple-primary);
   transform: none;
 }
@@ -62,8 +62,8 @@
   border: 2px solid var(--purple-primary);
   border-radius: 10px;
   padding: 1.25rem;
-  background: rgba(124, 58, 237, 0.04);
-  box-shadow: 0 4px 16px rgba(124, 58, 237, 0.2);
+  background: rgba(0, 184, 212, 0.04);
+  box-shadow: 0 4px 16px rgba(0, 184, 212, 0.2);
 }
 
 .emptyState {
@@ -101,8 +101,8 @@
 
 .sessionCard.active {
   border-color: var(--purple-primary);
-  background: rgba(124, 58, 237, 0.08);
-  box-shadow: 0 0 0 1px var(--purple-primary), 0 4px 16px rgba(124, 58, 237, 0.2);
+  background: rgba(0, 184, 212, 0.08);
+  box-shadow: 0 0 0 1px var(--purple-primary), 0 4px 16px rgba(0, 184, 212, 0.2);
 }
 
 .sessionCardHeader {
@@ -167,7 +167,7 @@
 
 .statusBadge.created {
   background: rgba(113, 113, 122, 0.15);
-  color: #A1A1AA;
+  color: #9CA3AF;
 }
 
 .statusBadge.uploaded {
@@ -205,9 +205,9 @@
   border-radius: 6px;
   font-size: 0.75rem;
   font-weight: 600;
-  background: rgba(124, 58, 237, 0.12);
-  color: #A78BFA;
-  border: 1px solid rgba(124, 58, 237, 0.2);
+  background: rgba(0, 184, 212, 0.12);
+  color: #26C6DA;
+  border: 1px solid rgba(0, 184, 212, 0.2);
 }
 
 /* Active Session Panel */
@@ -309,13 +309,13 @@
 }
 
 .metadataLink:hover {
-  color: #A78BFA;
+  color: #26C6DA;
   text-decoration: underline;
 }
 
 .metadataNotes {
   padding: 0.625rem;
-  background: rgba(124, 58, 237, 0.04);
+  background: rgba(0, 184, 212, 0.04);
   border-radius: 6px;
   border-left: 2px solid var(--purple-primary);
   transition: background 0.2s ease;
@@ -326,7 +326,7 @@
 }
 
 .metadataNotes.editable:hover {
-  background: rgba(124, 58, 237, 0.08);
+  background: rgba(0, 184, 212, 0.08);
 }
 
 .notesText {
@@ -338,7 +338,7 @@
 
 .metadataNotesEmpty {
   padding: 0.625rem;
-  background: rgba(124, 58, 237, 0.04);
+  background: rgba(0, 184, 212, 0.04);
   border-radius: 6px;
   border-left: 2px solid transparent;
   transition: all 0.2s ease;
@@ -346,7 +346,7 @@
 }
 
 .metadataNotesEmpty:hover {
-  background: rgba(124, 58, 237, 0.08);
+  background: rgba(0, 184, 212, 0.08);
   border-left-color: var(--purple-primary);
 }
 
@@ -405,7 +405,7 @@
 .uploadPrompt {
   margin-bottom: 0.625rem;
   padding: 0.75rem;
-  background: rgba(124, 58, 237, 0.04);
+  background: rgba(0, 184, 212, 0.04);
   border-radius: 6px;
   border-left: 2px solid var(--purple-primary);
 }

@@ -230,16 +230,16 @@
 }
 
 .chunkRow:hover {
-  background: rgba(124, 58, 237, 0.04);
+  background: rgba(0, 184, 212, 0.04);
 }
 
 .active {
-  background: rgba(124, 58, 237, 0.08);
+  background: rgba(0, 184, 212, 0.08);
   border-left-color: var(--purple-primary);
 }
 
 .active:hover {
-  background: rgba(124, 58, 237, 0.1);
+  background: rgba(0, 184, 212, 0.1);
 }
 
 /* Tag dot — needs special alignment since baseline doesn't work for non-text */
@@ -258,7 +258,7 @@
 .timestamp {
   font-size: 0.6875rem;
   font-weight: 600;
-  color: #A78BFA;
+  color: #26C6DA;
   background: transparent;
   border: none;
   padding: 0;

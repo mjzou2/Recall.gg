@@ -1,23 +1,23 @@
 :root {
   font-family: 'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   color: #E4E4E7;
-  background: #0A0A0D;
+  background: #0A0A0C;
   --pane-h: 85vh;
 
   /* Dark theme color palette */
-  --bg-base: #0A0A0D;
-  --bg-elevated: #18181B;
-  --bg-hover: #27272A;
-  --purple-primary: #7C3AED;
-  --purple-secondary: #6D28D9;
-  --purple-glow: rgba(124, 58, 237, 0.15);
-  --text-primary: #ECECEF;
-  --text-secondary: #A1A1AA;
-  --text-tertiary: #71717A;
+  --bg-base: #0A0A0C;
+  --bg-elevated: #141416;
+  --bg-hover: #1E1E21;
+  --purple-primary: #00B8D4;
+  --purple-secondary: #26C6DA;
+  --purple-glow: rgba(0, 184, 212, 0.15);
+  --text-primary: #E4E4E7;
+  --text-secondary: #9CA3AF;
+  --text-tertiary: #6B7280;
   --border-subtle: rgba(255, 255, 255, 0.08);
   --border-medium: rgba(255, 255, 255, 0.12);
 
   /* Sidebar */
-  --sidebar-bg: #111114;
+  --sidebar-bg: #101012;
   --sidebar-width: 220px;
 }

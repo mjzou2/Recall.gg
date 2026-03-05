@@ -18,6 +18,7 @@ function App() {
   const [pageIndex, setPageIndex] = useState(0)
   const [showSpeakerModal, setShowSpeakerModal] = useState(false)
   const [confirmDialog, setConfirmDialog] = useState(null)
+  const [openInEditMode, setOpenInEditMode] = useState(false)
   const speakerPromptedRef = useRef(new Set())
   const returnToViewRef = useRef(null)
   const stashedChunksRef = useRef(null)
@@ -94,8 +95,9 @@ function App() {
   }
 
   // Session Mode: ready session with chunks → transcript panel + full-width video
+  // Suppressed when openInEditMode is set so SessionDetail's edit form is shown instead
   const isSessionMode = Boolean(
-    sessionId && sessionDetails?.status === 'ready' && allChunks.length > 0
+    sessionId && sessionDetails?.status === 'ready' && allChunks.length > 0 && !openInEditMode
   )
 
   // Auto-prompt speaker assignment for newly processed sessions
@@ -179,30 +181,27 @@ function App() {
               onUploadMedia={uploadMedia}
               onDeleteSession={deleteSession}
               onProcessMedia={processMedia}
+              onUpdateSession={updateSession}
               showConfirm={showConfirm}
             />
           )}
 
           {activeView === 'sessions' && sessionId && (
-            <>
-              <SessionDetail
-                sessionDetails={sessionDetails}
-                sessionId={sessionId}
-                isUploading={isUploading}
-                isProcessing={isProcessing}
-                elapsedSeconds={elapsedSeconds}
-                onUpdateSession={updateSession}
-                onDeleteSession={deleteSession}
-                onCloseSession={closeSession}
-                onUploadMedia={uploadMedia}
-                onProcessMedia={processMedia}
-                showConfirm={showConfirm}
-              />
-              <YouTubePlayer
-                videoUrl={currentVideoUrl || sessionDetails?.youtube_url}
-                hasSession={Boolean(sessionId)}
-              />
-            </>
+            <SessionDetail
+              sessionDetails={sessionDetails}
+              sessionId={sessionId}
+              isUploading={isUploading}
+              isProcessing={isProcessing}
+              elapsedSeconds={elapsedSeconds}
+              onUpdateSession={updateSession}
+              onDeleteSession={deleteSession}
+              onCloseSession={closeSession}
+              onUploadMedia={uploadMedia}
+              onProcessMedia={processMedia}
+              showConfirm={showConfirm}
+              openInEditMode={openInEditMode}
+              onEditModeUsed={() => setOpenInEditMode(false)}
+            />
           )}
 
           {/* ExplorePanel: always mounted to preserve search state, hidden via CSS when not active */}
