@@ -1,5 +1,5 @@
 :root {
-  font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  font-family: 'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   color: #E4E4E7;
   background: #0A0A0D;
   --pane-h: 85vh;
@@ -11,7 +11,7 @@
   --purple-primary: #7C3AED;
   --purple-secondary: #6D28D9;
   --purple-glow: rgba(124, 58, 237, 0.15);
-  --text-primary: #E4E4E7;
+  --text-primary: #ECECEF;
   --text-secondary: #A1A1AA;
   --text-tertiary: #71717A;
   --border-subtle: rgba(255, 255, 255, 0.08);

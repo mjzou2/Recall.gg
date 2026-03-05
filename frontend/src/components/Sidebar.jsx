@@ -4,8 +4,7 @@ export const Sidebar = ({ activeView, onNavigate }) => {
   return (
     <nav className={styles.sidebar}>
       <div className={styles.logo}>
-        <span className={styles.logoText}>RECALL.GG</span>
-        <span className={styles.logoSubtext}>Scrim reviews</span>
+        <span className={styles.logoText}>RECALL<span className={styles.logoAccent}>.GG</span></span>
       </div>
 
       <div className={styles.nav}>

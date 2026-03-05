@@ -73,7 +73,6 @@ export const SessionList = ({
       <div className={styles.toolbar}>
         <div className={styles.toolbarLeft}>
           <h2 className={styles.title}>Sessions</h2>
-          <span className={styles.count}>{sessions.length}</span>
         </div>
         <div className={styles.toolbarRight}>
           <button className={styles.refreshBtn} onClick={onLoadSessions} title="Refresh">
@@ -136,7 +135,7 @@ export const SessionList = ({
       )}
 
       <div className={styles.listHeader}>
-        <span className={styles.colName}>Name</span>
+        <span className={styles.colName}>Name<span className={styles.listCount}> · {sessions.length} sessions</span></span>
         <span className={styles.colDate}>Date</span>
         <span className={styles.colDuration}>Duration</span>
         <span className={styles.colStatus}>Status</span>
