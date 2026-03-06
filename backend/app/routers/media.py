@@ -23,7 +23,7 @@ async def upload_media(session_id: str, file: UploadFile = File(...)) -> Dict:
     if not file.filename:
         raise HTTPException(status_code=400, detail="Filename is required")
 
-    MAX_SIZE = 5 * 1024 * 1024 * 1024 # 100MB in bytes
+    MAX_SIZE = 5 * 1024 * 1024 * 1024  # 5GB in bytes
     file.file.seek(0, 2)  # Seek to end
     file_size = file.file.tell()
     file.file.seek(0)  # Seek back to start

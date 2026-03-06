@@ -315,58 +315,6 @@
   min-width: 0;
 }
 
-.uploadActions {
-  display: flex;
-  gap: 0.5rem;
-}
-
-.uploadBtn {
-  padding: 0.375rem 0.875rem;
-  font-size: 0.8125rem;
-  font-weight: 600;
-  border-radius: 5px;
-  background: var(--purple-primary);
-  color: white;
-  border: none;
-  cursor: pointer;
-  transition: background 0.15s ease;
-}
-
-.uploadBtn:hover {
-  background: var(--purple-secondary);
-}
-
-.uploadBtn:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-.processBtn {
-  padding: 0.375rem 0.875rem;
-  font-size: 0.8125rem;
-  font-weight: 500;
-  border-radius: 5px;
-  background: transparent;
-  color: var(--text-secondary);
-  border: 1px solid var(--border-medium);
-  cursor: pointer;
-  transition: color 0.15s ease, border-color 0.15s ease;
-  box-shadow: none;
-}
-
-.processBtn:hover {
-  color: var(--text-primary);
-  border-color: var(--text-tertiary);
-  background: transparent;
-  transform: none;
-  box-shadow: none;
-}
-
-.processBtn:disabled {
-  opacity: 0.7;
-  cursor: not-allowed;
-}
-
 /* Edit Form */
 .editForm {
   display: flex;

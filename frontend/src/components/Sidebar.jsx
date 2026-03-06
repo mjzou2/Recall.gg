@@ -4,6 +4,7 @@ export const Sidebar = ({ activeView, onNavigate }) => {
   return (
     <nav className={styles.sidebar}>
       <div className={styles.logo}>
+        <img src="/logo.png" alt="" width={34} height={34} className={styles.logoImg} />
         <span className={styles.logoText}>RECALL<span className={styles.logoAccent}>.GG</span></span>
       </div>
 

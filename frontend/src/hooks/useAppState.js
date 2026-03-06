@@ -221,8 +221,6 @@ export const useAppState = () => {
     sessionDetails,
     chunks,
     allChunks,
-    status,
-    error,
     isUploading,
     isProcessing,
     elapsedSeconds,
@@ -240,8 +238,6 @@ export const useAppState = () => {
     updateChunk,
 
     // State setters (for components that need direct access)
-    setStatus,
-    setError,
     setChunks,
   }
 }

@@ -4,13 +4,11 @@ import * as formatters from '../utils/formatters'
 import { PAGE_SIZE } from '../utils/api'
 import { TAG_COLORS, TAG_LABELS, getSpeakerColor } from './SessionTimeline'
 
-const TAG_PATTERN = /^\[(\w+)\]\s*(.*)$/
-
 const extractTags = (notes) => {
   if (!notes) return []
   const tags = []
   for (const line of notes.split('\n')) {
-    const match = line.trim().match(TAG_PATTERN)
+    const match = line.trim().match(formatters.TAG_PATTERN)
     if (match && TAG_COLORS[match[1]]) {
       tags.push({ type: match[1], label: match[2] })
     }
@@ -39,9 +37,7 @@ export const ExplorePanel = ({
   sessionId,
   sessionDetails,
   chunks,
-  youtubePlayer,
   chunkListRef,
-  activeChunkId,
   autoScrollEnabled,
   setAutoScrollEnabled,
   pageIndex,
@@ -113,7 +109,7 @@ export const ExplorePanel = ({
       result = result.filter(c => c.notes && c.notes.trim())
     }
     if (hasTagsOnly) {
-      result = result.filter(c => c.notes && c.notes.split('\n').some(line => TAG_PATTERN.test(line.trim())))
+      result = result.filter(c => c.notes && c.notes.split('\n').some(line => formatters.TAG_PATTERN.test(line.trim())))
     }
     return result
   }, [chunks, hasNotesOnly, hasTagsOnly])
@@ -318,8 +314,7 @@ export const ExplorePanel = ({
   }
 
   const renderChunk = (chunk) => {
-    const chunkKey =
-      chunk.id ?? `${chunk.start_ms}-${chunk.end_ms}-${chunk.text?.length ?? 0}`
+    const chunkKey = formatters.getChunkKey(chunk)
     const chunkSession = sessionMap[chunk.session_id] || sessionDetails
     const chunkVideoUrl = chunk.youtube_url || chunkSession?.youtube_url
     const youtubeLink = formatters.buildYoutubeUrlWithTimestamp(
@@ -330,7 +325,7 @@ export const ExplorePanel = ({
       chunk.speaker,
       chunkSession?.speaker_names
     )
-    const speakerIndex = parseInt(chunk.speaker?.match(/(\d+)/)?.[1] ?? '0', 10)
+    const speakerIndex = formatters.getSpeakerIndex(chunk.speaker)
     const tags = extractTags(chunk.notes)
 
     return (

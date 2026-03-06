@@ -43,6 +43,8 @@ Locations: alcove, banana bush, baron pit, base, blast cone, blue buff, blue sid
 
 TASK 1: SCORECARD
 
+CONTEXT: This is a competitive game at the intramural, amateur, or semi-professional level. Score relative to this level of play, not professional LCS/LEC standards. A well-coordinated amateur team in a good game should score 7-9 in their strong areas. Reserve 1-3 for genuinely poor communication and 9-10 for exceptional moments.
+
 Rate this session in each category from 1-10. For each score, include the chunk_ids that most influenced your rating (only the clearest examples, not every instance).
 
 SUMMONER TRACKING (calling enemy cooldowns - flash, TP, ults, ignite, etc):
@@ -74,6 +76,12 @@ MAP AWARENESS (sharing enemy positions, jungle tracking, rotation calls, lane st
 4-6: Some callouts but reactive rather than proactive. Team shares info after getting caught, not before.
 7-9: Regular proactive calls on enemy movement, jungle pathing, rotation timing, and lane state (examples: "I have prio," "I need help crashing," "I'm gankable," "wave is pushing to me").
 10: Constant information flow. Team tracks enemy jungler, calls missing laners early, anticipates rotations, and keeps teammates updated on lane pressure and vulnerability.
+
+CALIBRATION EXAMPLES:
+- A team where one player calls every objective clearly and teammates confirm = Objective Setup 8-9
+- A team where objectives are taken without any prior discussion = Objective Setup 2-3
+- A team that tracks 3+ enemy summoners regularly = Summoner Tracking 7-8
+- A team that never mentions enemy summoners = Summoner Tracking 1-2
 
 TASK 2: TAGS
 

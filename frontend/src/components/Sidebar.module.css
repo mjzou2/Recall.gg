@@ -15,6 +15,12 @@
   height: 5.5rem;
   display: flex;
   align-items: center;
+  gap: 0.5rem;
+  margin-left: -0.25rem;
+}
+
+.logoImg {
+  flex-shrink: 0;
 }
 
 .logoText {

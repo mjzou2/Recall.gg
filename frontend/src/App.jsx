@@ -30,8 +30,6 @@ function App() {
     sessionDetails,
     chunks,
     allChunks,
-    status,
-    error,
     isUploading,
     isProcessing,
     elapsedSeconds,
@@ -50,7 +48,6 @@ function App() {
 
   const {
     youtubePlayer,
-    isYoutubeApiReady,
     chunkListRef,
     activeChunkId,
     autoScrollEnabled,
@@ -216,9 +213,7 @@ function App() {
               sessionId={sessionId}
               sessionDetails={sessionDetails}
               chunks={chunks}
-              youtubePlayer={youtubePlayer}
               chunkListRef={chunkListRef}
-              activeChunkId={activeChunkId}
               autoScrollEnabled={autoScrollEnabled}
               setAutoScrollEnabled={setAutoScrollEnabled}
               pageIndex={pageIndex}

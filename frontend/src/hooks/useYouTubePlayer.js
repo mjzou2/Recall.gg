@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from 'react'
-import { extractYoutubeVideoId } from '../utils/formatters'
+import { extractYoutubeVideoId, getChunkKey } from '../utils/formatters'
 import { PAGE_SIZE } from '../utils/api'
 
 /**
@@ -168,9 +168,7 @@ export const useYouTubePlayer = (sessionDetails, chunks, pageIndex, setPageIndex
         )
 
         if (activeChunk) {
-          const chunkKey =
-            activeChunk.id ??
-            `${activeChunk.start_ms}-${activeChunk.end_ms}-${activeChunk.text?.length ?? 0}`
+          const chunkKey = getChunkKey(activeChunk)
 
           setActiveChunkId(chunkKey)
 
@@ -178,9 +176,7 @@ export const useYouTubePlayer = (sessionDetails, chunks, pageIndex, setPageIndex
           if (autoScrollEnabled) {
             // Find which page this chunk is on
             const chunkIndex = chunks.findIndex((chunk) => {
-              const key =
-                chunk.id ?? `${chunk.start_ms}-${chunk.end_ms}-${chunk.text?.length ?? 0}`
-              return key === chunkKey
+              return getChunkKey(chunk) === chunkKey
             })
 
             if (chunkIndex !== -1) {

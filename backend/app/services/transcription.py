@@ -18,6 +18,7 @@ from app.config import (
 )
 from app.services.text_processing import (
     load_term_bank,
+    collapse_repetitions,
     normalize_lol_text,
     _build_fuzzy_lookup,
     fuzzy_correct_text,
@@ -61,7 +62,7 @@ HOTWORDS = [
     # Abbreviations & jargon
     "ADC", "BORK", "IE", "BT", "CS", "CC", "LDR", "QSS", "RFC", "ROA",
     # Esports terms not in normal English
-    "prio", "crossmap", "tribush", "krugs", "gromp", "raptors",
+    "prio", "crossmap", "tribush", "krugs", "gromp", "raptors", "tempo",
     # Items Whisper wouldn't know
     "Zhonya's", "Liandry's", "Serylda's", "Navori", "Youmuu's",
     "Guinsoo", "Morellonomicon", "Rabadon's",
@@ -175,6 +176,7 @@ def transcribe_audio(audio_path: Path) -> List[Dict]:
         text = segment.get("text", "").strip()
         if not text:
             continue
+        text = collapse_repetitions(text)
         if normalize_enabled:
             text = normalize_lol_text(text)
         if fuzzy_enabled and fuzzy_lookup:

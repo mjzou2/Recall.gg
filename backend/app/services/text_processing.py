@@ -13,6 +13,53 @@ from app.config import (
 )
 
 
+def collapse_repetitions(text: str) -> str:
+    """Collapse repetition loops (a known Whisper bug in chaotic audio).
+
+    When a word or short phrase (1-3 words) repeats more than 3 times
+    consecutively, collapse to 3 repetitions and append [repeated].
+    Processes longest n-grams first to avoid partial matches.
+    """
+    words = text.split()
+    if len(words) < 4:
+        return text
+
+    # Process longest phrases first (3-word, then 2-word, then 1-word)
+    for phrase_len in (3, 2, 1):
+        i = 0
+        result = []
+        while i < len(words):
+            if i + phrase_len <= len(words):
+                phrase = words[i:i + phrase_len]
+                phrase_lower = [w.lower().strip(".,!?;:\"'()[]") for w in phrase]
+
+                # Count consecutive repetitions of this phrase
+                count = 1
+                j = i + phrase_len
+                while j + phrase_len <= len(words):
+                    next_phrase = [w.lower().strip(".,!?;:\"'()[]") for w in words[j:j + phrase_len]]
+                    if next_phrase == phrase_lower:
+                        count += 1
+                        j += phrase_len
+                    else:
+                        break
+
+                if count > 3:
+                    # Keep 3 repetitions + [repeated]
+                    for _ in range(3):
+                        result.extend(phrase)
+                    result.append("[repeated]")
+                    i = j  # skip past all repetitions
+                    continue
+
+            result.append(words[i])
+            i += 1
+
+        words = result
+
+    return " ".join(words)
+
+
 def normalize_lol_text(text: str) -> str:
     replacements = [
         # Common Whisper mishears
@@ -35,6 +82,14 @@ def normalize_lol_text(text: str) -> str:
         (r"\bkog maw\b", "Kog'Maw"),
         (r"\brek sai\b", "Rek'Sai"),
         (r"\bkai sa\b", "Kai'Sa"),
+        # Mishears from transcription_errors.tsv
+        (r"\btemples?\b", "tempo"),          # temple/temple's → tempo
+        (r"\bgax\b", "Jax"),                 # gax → Jax
+        (r"\bazra?el\b", "Ezreal"),          # azrael/azrel → Ezreal
+        (r"\btidal\b", "Trundle"),           # tidal → Trundle
+        (r"\btryndall'?s?\b", "Trundle"),    # tryndall/tryndall's → Trundle
+        (r"\bshrunked\b", "chunked"),        # shrunked → chunked
+        (r"\btop ?watch\b", "stopwatch"),    # top watch → stopwatch
         # Short word mishears (< 4 chars, fuzzy skips)
         (r"\bchen\b", "Shen"),
         (r"\bjacks?\b", "Jax"),  # matches: jax, jack, jacks, jack's (apostrophe stripped by re.IGNORECASE)

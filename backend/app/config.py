@@ -34,7 +34,7 @@ ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 
 # WhisperX configuration
 HF_TOKEN = os.environ.get("HF_TOKEN", "")
-_num_speakers = os.environ.get("NUM_SPEAKERS", "5")
+_num_speakers = os.environ.get("NUM_SPEAKERS", "")
 NUM_SPEAKERS: Optional[int] = int(_num_speakers) if _num_speakers else None
 WHISPERX_BATCH_SIZE = int(os.environ.get("WHISPERX_BATCH_SIZE", "16"))
 MIN_CHUNK_MS = int(os.environ.get("MIN_CHUNK_MS", "2000"))

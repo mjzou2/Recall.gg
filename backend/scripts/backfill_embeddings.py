@@ -53,7 +53,6 @@ def backfill():
             embeddings = embed_texts(chunk_texts)
             if embeddings is None:
                 print("ERROR: Embedding model failed to load. Aborting backfill.")
-                put_conn(conn)
                 return
 
             with conn.cursor() as cur:

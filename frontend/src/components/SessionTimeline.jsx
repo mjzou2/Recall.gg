@@ -4,6 +4,7 @@ import {
   ReferenceLine
 } from 'recharts'
 import styles from './SessionTimeline.module.css'
+import { getSpeakerIndex, getSpeakerDisplayName, TAG_PATTERN } from '../utils/formatters'
 
 // Speaker color palette - exported for reuse
 export const SPEAKER_COLORS = [
@@ -42,16 +43,10 @@ const formatTimeAxis = (seconds) => {
   return `${m}:${s.toString().padStart(2, '0')}`
 }
 
-const formatSpeakerName = (key, speakerNames) => {
+const formatSpeakerLabel = (key, speakerNames) => {
   if (key === 'unknown') return 'Unknown'
-  const match = key.match(/(\d+)/)
-  if (!match) return key
-  const num = match[1]
-  if (speakerNames && speakerNames[num]) return speakerNames[num]
-  return `Speaker ${parseInt(num, 10) + 1}`
+  return getSpeakerDisplayName(key, speakerNames) || key
 }
-
-const TAG_PATTERN = /^\[(\w+)\]\s*(.*)$/
 
 export const SessionTimeline = ({ chunks, youtubePlayer, loadVideo, currentVideoUrl, speakerNames }) => {
   const [currentTime, setCurrentTime] = useState(0)
@@ -65,7 +60,7 @@ export const SessionTimeline = ({ chunks, youtubePlayer, loadVideo, currentVideo
         {payload.map((entry, i) => (
           <div key={i} className={styles.tooltipRow}>
             <span className={styles.tooltipDot} style={{ background: entry.color }} />
-            <span className={styles.tooltipLabel}>{formatSpeakerName(entry.dataKey, speakerNames)}</span>
+            <span className={styles.tooltipLabel}>{formatSpeakerLabel(entry.dataKey, speakerNames)}</span>
             <span className={styles.tooltipValue}>{entry.value}%</span>
           </div>
         ))}
@@ -201,7 +196,7 @@ export const SessionTimeline = ({ chunks, youtubePlayer, loadVideo, currentVideo
           <Tooltip content={renderTooltip} wrapperStyle={{ display: 'none' }} />
 
           {speakers.map((speaker) => {
-            const speakerIdx = parseInt(speaker.match(/(\d+)/)?.[1] ?? '0', 10)
+            const speakerIdx = getSpeakerIndex(speaker)
             return (
             <Line
               key={speaker}

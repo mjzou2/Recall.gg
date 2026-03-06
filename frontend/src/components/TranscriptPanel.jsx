@@ -1,9 +1,7 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import styles from './TranscriptPanel.module.css'
-import { formatTime, parseScorecard, averageScore, getSpeakerDisplayName } from '../utils/formatters'
-import { SPEAKER_COLORS, getSpeakerColor, TAG_COLORS, TAG_LABELS } from './SessionTimeline'
-
-const TAG_PATTERN = /^\[(\w+)\]\s*(.*)$/
+import { formatTime, parseScorecard, averageScore, getSpeakerDisplayName, getSpeakerIndex, getChunkKey, TAG_PATTERN } from '../utils/formatters'
+import { getSpeakerColor, TAG_COLORS, TAG_LABELS } from './SessionTimeline'
 
 const getScoreColor = (score) => {
   if (score >= 7) return '#86EFAC'
@@ -245,10 +243,9 @@ export const TranscriptPanel = ({
           </div>
         )}
         {filteredChunks.map((chunk) => {
-          const chunkKey =
-            chunk.id ?? `${chunk.start_ms}-${chunk.end_ms}-${chunk.text?.length ?? 0}`
+          const chunkKey = getChunkKey(chunk)
           const tag = getChunkTag(chunk)
-          const speakerIdx = parseInt(chunk.speaker?.match(/(\d+)/)?.[1] ?? '0', 10)
+          const speakerIdx = getSpeakerIndex(chunk.speaker)
           const speakerColor = getSpeakerColor(speakerIdx)
           const displayName = getSpeakerDisplayName(chunk.speaker, sessionDetails?.speaker_names)
           const isActive = chunkKey === activeChunkId

@@ -365,12 +365,6 @@
   background: rgba(255, 255, 255, 0.03);
 }
 
-.chunk.active {
-  background: rgba(0, 184, 212, 0.08);
-  border-left: 3px solid var(--purple-primary);
-  padding-left: calc(0.875rem - 3px);
-}
-
 .chunkHeader {
   display: flex;
   align-items: center;
@@ -461,9 +455,7 @@
 
 /* Chunk Buttons */
 .copyBtn,
-.noteBtn,
-.expandIndicator,
-.collapseBtn {
+.noteBtn {
   background: transparent;
   border: 1px solid var(--border-medium);
   color: var(--text-secondary);
@@ -486,9 +478,7 @@
 }
 
 .copyBtn:hover,
-.noteBtn:hover,
-.expandIndicator:hover,
-.collapseBtn:hover {
+.noteBtn:hover {
   opacity: 1 !important;
   background: var(--bg-hover);
   border-color: var(--purple-primary);
@@ -531,10 +521,6 @@
   color: var(--text-secondary);
   line-height: 1.6;
   font-size: 0.875rem;
-}
-
-.chunkText.editable {
-  cursor: pointer;
 }
 
 /* Chunk Text Editing */

@@ -37,7 +37,8 @@ Most VOD tools parse **game events** (kills, objectives, gold). RECALL.GG parses
   - ✓ League-specific term bank (300+ terms: champions, objectives, comms vocabulary)
   - ✓ Contextual initial_prompt + hotwords for domain accuracy
   - ✓ Model selection (base/small/medium/large) - currently using large-v3 with int8 quantization
-  - ✓ Post-normalization for common mishears (19 regex rules: apostrophe champions, abbreviations, etc.)
+  - ✓ **Repetition loop collapse** - detects Whisper repetition bugs in chaotic audio, collapses >3 repeats + [repeated] marker
+  - ✓ Post-normalization for common mishears (26 regex rules: apostrophe champions, abbreviations, error log mishears, etc.)
   - ✓ **Fuzzy post-processing with RapidFuzz** - auto-corrects against term bank (score_cutoff=82)
   - ✓ Achieves ~60% base accuracy on League terms
   - ✓ Target with fuzzy processing: 70-80% accuracy

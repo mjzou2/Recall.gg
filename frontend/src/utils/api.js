@@ -4,10 +4,6 @@ const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8000'
 // Constants
 export const PAGE_SIZE = 25
 
-export const FEATURE_FLAGS = {
-  SHOW_STATUS_BOX: false, // Set to true to show status/error badges in header
-}
-
 // Helper function to handle API responses
 const handleResponse = async (res) => {
   if (!res.ok) {

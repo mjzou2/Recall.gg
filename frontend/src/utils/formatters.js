@@ -44,23 +44,6 @@ export const formatRelativeTime = (isoDate) => {
 
 // URL Helpers
 
-export const shortenUrl = (url) => {
-  if (!url) return ''
-  try {
-    const parsed = new URL(url)
-    const tail = parsed.pathname.split('/').filter(Boolean).pop()
-    const fragment = parsed.search || parsed.hash || ''
-    const suffix = tail ? `${tail}${fragment}` : fragment.replace(/^\?/, '')
-    return `${parsed.hostname}${suffix ? `/${suffix}` : ''}`
-  } catch {
-    const trimmed = url.replace(/^https?:\/\//, '')
-    const parts = trimmed.split('/')
-    if (parts.length <= 1) return trimmed
-    const last = parts[parts.length - 1] || parts[parts.length - 2]
-    return `${parts[0]}/${last}`
-  }
-}
-
 export const basename = (path) => {
   if (!path) return ''
   const normalized = path.split('?')[0]
@@ -129,17 +112,10 @@ export const averageScore = (scorecard) => {
   return vals.length ? (vals.reduce((a, b) => a + b, 0) / vals.length).toFixed(1) : null
 }
 
-// Text Helpers
-
-export const getPreviewText = (text) => {
-  if (!text) return ''
-  const firstLine = text.split('\n')[0]
-  if (firstLine.length > 140) return `${firstLine.slice(0, 140)}...`
-  if (text.length > firstLine.length) return `${firstLine}...`
-  return firstLine
-}
-
 // Speaker Helpers
+
+export const getSpeakerIndex = (speaker) =>
+  parseInt(speaker?.match(/(\d+)/)?.[1] ?? '0', 10)
 
 export const getSpeakerDisplayName = (speakerLabel, speakerNames) => {
   if (!speakerLabel) return null
@@ -149,3 +125,12 @@ export const getSpeakerDisplayName = (speakerLabel, speakerNames) => {
   if (speakerNames && speakerNames[speakerNum]) return speakerNames[speakerNum]
   return `S${parseInt(speakerNum, 10) + 1}`
 }
+
+// Chunk Helpers
+
+export const getChunkKey = (chunk) =>
+  chunk.id ?? `${chunk.start_ms}-${chunk.end_ms}-${chunk.text?.length ?? 0}`
+
+// Tag Helpers
+
+export const TAG_PATTERN = /^\[(\w+)\]\s*(.*)$/
