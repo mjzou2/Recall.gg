@@ -6,7 +6,7 @@ from typing import Dict
 
 from fastapi import APIRouter, File, HTTPException, UploadFile
 
-from app.config import UPLOAD_DIR, DISABLE_SEMANTIC_SEARCH, DISABLE_LLM_ANALYSIS
+from app.config import UPLOAD_DIR, DISABLE_SEMANTIC_SEARCH, DISABLE_LLM_ANALYSIS, SAVE_INTERMEDIATE
 from app.database import get_conn, put_conn, fetch_session, fetch_chunks
 from app.services.audio import extract_audio
 from app.services.embedding import embed_texts
@@ -91,9 +91,17 @@ def process_media(session_id: str) -> Dict:
         print("Processing: extracting audio")
         audio_path = extract_audio(session_id, media_file)
         print("Processing: transcribing audio")
-        segments = transcribe_audio(audio_path)
+        debug_dir = (UPLOAD_DIR / session_id / "debug") if SAVE_INTERMEDIATE else None
+        segments = transcribe_audio(audio_path, debug_dir=debug_dir)
         print("Processing: merging segments")
         chunks = merge_segments(segments) if segments else []
+        if debug_dir and chunks:
+            import json
+            debug_dir.mkdir(parents=True, exist_ok=True)
+            out_path = debug_dir / "4_chunks.json"
+            with out_path.open("w") as f:
+                json.dump(chunks, f, indent=2)
+            print(f"[debug] saved {out_path}")
 
         # Embed chunk texts for semantic search
         embeddings = None

@@ -39,6 +39,24 @@ NUM_SPEAKERS: Optional[int] = int(_num_speakers) if _num_speakers else None
 WHISPERX_BATCH_SIZE = int(os.environ.get("WHISPERX_BATCH_SIZE", "16"))
 MIN_CHUNK_MS = int(os.environ.get("MIN_CHUNK_MS", "2000"))
 
+# Diarization tuning (all optional; empty = use model defaults)
+_diarize_min = os.environ.get("DIARIZE_MIN_SPEAKERS", "")
+DIARIZE_MIN_SPEAKERS: Optional[int] = int(_diarize_min) if _diarize_min else None
+_diarize_max = os.environ.get("DIARIZE_MAX_SPEAKERS", "")
+DIARIZE_MAX_SPEAKERS: Optional[int] = int(_diarize_max) if _diarize_max else None
+_diarize_seg = os.environ.get("DIARIZE_SEGMENTATION_THRESHOLD", "")
+DIARIZE_SEGMENTATION_THRESHOLD: Optional[float] = float(_diarize_seg) if _diarize_seg else None
+_diarize_clust = os.environ.get("DIARIZE_CLUSTERING_THRESHOLD", "")
+DIARIZE_CLUSTERING_THRESHOLD: Optional[float] = float(_diarize_clust) if _diarize_clust else None
+_diarize_off = os.environ.get("DIARIZE_MIN_DURATION_OFF", "")
+DIARIZE_MIN_DURATION_OFF: Optional[float] = float(_diarize_off) if _diarize_off else None
+_diarize_on = os.environ.get("DIARIZE_MIN_DURATION_ON", "")
+DIARIZE_MIN_DURATION_ON: Optional[float] = float(_diarize_on) if _diarize_on else None
+WORD_PAUSE_THRESHOLD_MS = int(os.environ.get("WORD_PAUSE_THRESHOLD", "1500"))
+
+# Debug / development flags
+SAVE_INTERMEDIATE = os.environ.get("SAVE_INTERMEDIATE", "0") == "1"
+
 # Fuzzy matching configuration
 FUZZY_CATEGORIES = {"champions", "items", "objectives"}
 FUZZY_STOPWORDS = {"theres"}  # there's → "theres" matches Thresh at 83
