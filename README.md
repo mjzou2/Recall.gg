@@ -26,7 +26,7 @@ Watch the 4-minute walkthrough:
 ## The Vision (Next)
 
 Once you can search your comms, you can analyze them:
-- **Auto-generated session scorecards and chunk tags** via Claude Haiku (implemented)
+- **Auto-generated session scorecards and chunk tags**
 - Track how often your team communicates during objective fights
 - Visualize communication intensity across the game timeline
 - Identify patterns in decision-making and shotcalling
