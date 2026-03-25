@@ -10,9 +10,11 @@ frontend/dist/
 
 # App data / uploads
 backend/data/
+**/debug/
 backend/data_backup/
 backend/uploads/
 *.sqlite
+backend/tests/separated
 
 # OS/IDE
 .vscode/

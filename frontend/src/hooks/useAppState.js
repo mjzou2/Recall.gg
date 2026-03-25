@@ -164,6 +164,9 @@ export const useAppState = () => {
     setIsProcessing(true)
     setError('')
     setStatus('Processing (transcribe + chunk)...')
+    // Optimistically update session status so it shows "processing" immediately
+    setSessions(prev => prev.map(s => s.id === sessionId ? { ...s, status: 'processing' } : s))
+    setSessionDetails(prev => prev && prev.id === sessionId ? { ...prev, status: 'processing' } : prev)
     try {
       const data = await api.processSession(sessionId)
       setChunks(data.chunks || [])
