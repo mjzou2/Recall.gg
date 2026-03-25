@@ -4,6 +4,8 @@
 
 ---
 
+**MVP 2.0 coming soon**
+
 ## The Problem
 
 In esports, coaches and teams need to review and discuss key moments in their practice. But finding these moments usually means manually scrubbing through an entire VOD, trying to remember what/when important things happened. Review sessions are often unstructured and may not always complete in the allotted review time.
@@ -26,7 +28,7 @@ Watch the 4-minute walkthrough:
 ## The Vision (Next)
 
 Once you can search your comms, you can analyze them:
-- **Auto-generated session scorecards and chunk tags** via Claude Haiku (implemented)
+- **Auto-generated session scorecards and chunk tags**
 - Track how often your team communicates during objective fights
 - Visualize communication intensity across the game timeline
 - Identify patterns in decision-making and shotcalling
@@ -95,9 +97,9 @@ Search is the foundation. The goal is to extract insights from team communicatio
 - ✅ Chronological chunk ordering
 - ✅ Large embedded player optimized for screen sharing
 
-**MVP 1.0 Status:** ✅ Complete and ready for demo
+**MVP 1.0 Status:** ✅ Complete
 
-See [PRODUCT.md](docs/PRODUCT.md) for the full roadmap (MVP 1.5, 2.0).
+**MVP 2.0 Status:** Soon
 
 ---
 
@@ -247,8 +249,8 @@ vodcomms/
 ## Roadmap
 
 **MVP 1.0 (✅ Complete):** Full local tool with search, transcription, time filtering, bookmarks, annotations, and LLM analysis
-**MVP 1.5 (In Progress):** Speaker assignment (done), full-width Explore view (done), speaker filtering, intensity detection, session comparison
-**MVP 2.0 (Future):** Production SaaS with teams, cloud hosting, fine-tuned models, live transcription
+**MVP 1.5 (Complete, unreleased):** Speaker assignment (done), full-width Explore view (done), speaker filtering, intensity detection, session comparison
+**MVP 2.0 (Release Soon):** Production SaaS with teams, cloud hosting, fine-tuned models, live transcription
 
 See [PRODUCT.md](docs/PRODUCT.md) for detailed roadmap and feature priorities.
 
