@@ -466,7 +466,7 @@ def main() -> None:
         out_path = Path(args.output)
         out_path.parent.mkdir(parents=True, exist_ok=True)
         with out_path.open("w") as f:
-            f.write(f"EXPERIMENTAL: Diarize-first pipeline\n")
+            f.write("EXPERIMENTAL: Diarize-first pipeline\n")
             f.write(f"Audio: {audio_path}\n")
             f.write(f"Model: {args.model}, Device: {args.device}\n")
             f.write(f"Speakers: {args.num_speakers}\n")

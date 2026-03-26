@@ -107,7 +107,7 @@ def main() -> None:
     pause_ms = args.pause_threshold if args.pause_threshold is not None else WORD_PAUSE_THRESHOLD_MS
     device = _get_device()
 
-    print(f"\nDiarization settings:")
+    print("\nDiarization settings:")
     print(f"  device:                 {device}")
     print(f"  num_speakers:           {args.num_speakers}")
     print(f"  segmentation_threshold: {args.segmentation_threshold}")
