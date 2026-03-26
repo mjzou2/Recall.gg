@@ -6,9 +6,9 @@ from typing import Dict
 
 from fastapi import APIRouter, File, HTTPException, UploadFile
 
-from app.config import UPLOAD_DIR, DISABLE_SEMANTIC_SEARCH, DISABLE_LLM_ANALYSIS, SAVE_INTERMEDIATE
+from app.config import UPLOAD_DIR, DISABLE_SEMANTIC_SEARCH, DISABLE_LLM_ANALYSIS, SAVE_INTERMEDIATE, TRANSCRIBE_DEVICE
 from app.database import get_conn, put_conn, fetch_session, fetch_chunks
-from app.services.audio import extract_audio
+from app.services.audio import extract_audio, preprocess_audio
 from app.services.embedding import embed_texts
 from app.services.llm import analyze_session
 from app.services.transcription import transcribe_audio, merge_segments
@@ -90,6 +90,8 @@ def process_media(session_id: str) -> Dict:
     try:
         print("Processing: extracting audio")
         audio_path = extract_audio(session_id, media_file)
+        print("Processing: preprocessing audio (vocal isolation + loudnorm)")
+        audio_path = preprocess_audio(audio_path, TRANSCRIBE_DEVICE.lower(), debug_dir=debug_dir)
         print("Processing: transcribing audio")
         debug_dir = (UPLOAD_DIR / session_id / "debug") if SAVE_INTERMEDIATE else None
         segments = transcribe_audio(audio_path, debug_dir=debug_dir)

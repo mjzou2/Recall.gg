@@ -15,6 +15,9 @@ whisperx>=3.1.0
 # Pin torch to prevent surprise upgrades; whisperx/pyannote-audio require >=2.8.0
 torch>=2.8.0,<2.9
 
+# Audio preprocessing (vocal isolation)
+demucs
+
 # Embeddings
 sentence-transformers
 
