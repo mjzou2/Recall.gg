@@ -46,6 +46,7 @@ Search is the foundation. The goal is to extract insights from team communicatio
 **Media Processing:**
 - ✅ Upload audio (mp3, m4a, wav) or video (mp4, mkv, avi)
 - ✅ Automatic audio extraction from video files (ffmpeg) with light denoising
+- ✅ Audio preprocessing: demucs vocal isolation (strips game audio) + ffmpeg loudnorm (normalizes volume)
 - ✅ GPU-accelerated transcription (whisperX + CUDA, large-v3/int8) with word-level alignment
 - ✅ **Speaker diarization** via pyannote (identifies who said what)
 - ✅ **Speaker assignment** - Map speaker labels to real player names via modal with play-sample UX
@@ -145,6 +146,7 @@ WHISPERX_BATCH_SIZE=4  # 4 for large-v3/int8 on 8GB, 16 for small.en
 DISABLE_LOL_NORMALIZE=0
 DISABLE_FUZZY_CORRECT=0
 DISABLE_AUDIO_DENOISE=0
+DISABLE_AUDIO_PREPROCESSING=0  # Set 1 to skip demucs vocal isolation + loudnorm
 DISABLE_SEMANTIC_SEARCH=0
 SEMANTIC_SEARCH_THRESHOLD=0.5
 DISABLE_LLM_ANALYSIS=0
@@ -185,7 +187,7 @@ Frontend: http://localhost:5173
 
 ## Technical Stack
 
-- **Backend:** FastAPI (Python), Postgres with tsvector full-text search + pgvector semantic search, psycopg2, whisperX (transcription + alignment + diarization), sentence-transformers, Claude Haiku (LLM analysis), ffmpeg, RapidFuzz
+- **Backend:** FastAPI (Python), Postgres with tsvector full-text search + pgvector semantic search, psycopg2, whisperX (transcription + alignment + diarization), demucs (vocal isolation), sentence-transformers, Claude Haiku (LLM analysis), ffmpeg, RapidFuzz
 - **Frontend:** React + Vite, recharts (timeline visualization)
 - **Database:** Postgres (via Docker Compose) with pgvector extension, psycopg2 connection pool, no ORM
 - **Environment:** WSL2, GPU-accelerated (CUDA 12.9), local-first (no cloud)
@@ -201,6 +203,7 @@ Frontend: http://localhost:5173
 - 19 regex rules auto-correct common mishears (harold→herald, word→ward, apostrophe champions, etc.)
 - RapidFuzz fuzzy matching corrects close-spelling errors against term bank (score_cutoff=82)
 - Light audio denoising via ffmpeg (highpass + lowpass + noise reduction)
+- Demucs vocal isolation (htdemucs) + ffmpeg loudnorm volume normalization (skippable via DISABLE_AUDIO_PREPROCESSING=1)
 
 **Planned improvements:**
 - Fine-tuned model (MVP 2.0) → 80-90% accuracy

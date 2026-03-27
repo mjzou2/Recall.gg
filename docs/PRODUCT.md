@@ -29,6 +29,7 @@ Most VOD tools parse **game events** (kills, objectives, gold). RECALL.GG parses
 **Media Processing:**
 - ✓ Upload audio (mp3/m4a/wav) and video (mp4/mkv/avi)
 - ✓ Audio extraction via ffmpeg with light denoising (highpass + lowpass + afftdn)
+- ✓ Audio preprocessing: demucs vocal isolation (htdemucs, strips game audio) + ffmpeg loudnorm (normalizes volume across speakers). Fault-tolerant, controlled by DISABLE_AUDIO_PREPROCESSING flag
 - ✓ Transcription pipeline (whisperX):
   - ✓ WhisperX with GPU support (CUDA) — replaces faster-whisper
   - ✓ Word-level timestamp alignment via whisperx.align()
