@@ -21,14 +21,14 @@ Gone are the days of manually scrubbing through a 5+ hour VOD. Now you can find 
 
 ## Demo
 
-Watch the 4-minute walkthrough:
+Watch the 4-minute MVP 1.0 walkthrough:
 
 [![Recall.gg Demo](https://img.youtube.com/vi/5MuJDA3pIvg/0.jpg)](https://www.youtube.com/watch?v=5MuJDA3pIvg)
 
 ## The Vision (Next)
 
 Once you can search your comms, you can analyze them:
-- **Auto-generated session scorecards and chunk tags**
+- Auto-generated session scorecards and chunk tags
 - Track how often your team communicates during objective fights
 - Visualize communication intensity across the game timeline
 - Identify patterns in decision-making and shotcalling
@@ -267,4 +267,4 @@ See [PRODUCT.md](docs/PRODUCT.md) for detailed roadmap and feature priorities.
 - **React + Vite**
 - **RapidFuzz**
 - **sentence-transformers** + **pgvector**
-- **Anthropic Claude Haiku**
+- **Claude API**
