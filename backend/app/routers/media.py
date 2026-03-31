@@ -90,10 +90,10 @@ def process_media(session_id: str) -> Dict:
     try:
         print("Processing: extracting audio")
         audio_path = extract_audio(session_id, media_file)
+        debug_dir = (UPLOAD_DIR / session_id / "debug") if SAVE_INTERMEDIATE else None
         print("Processing: preprocessing audio (vocal isolation + loudnorm)")
         audio_path = preprocess_audio(audio_path, TRANSCRIBE_DEVICE.lower(), debug_dir=debug_dir)
         print("Processing: transcribing audio")
-        debug_dir = (UPLOAD_DIR / session_id / "debug") if SAVE_INTERMEDIATE else None
         segments = transcribe_audio(audio_path, debug_dir=debug_dir)
         print("Processing: merging segments")
         chunks = merge_segments(segments) if segments else []
