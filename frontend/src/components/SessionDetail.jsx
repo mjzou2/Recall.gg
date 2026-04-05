@@ -8,6 +8,7 @@ export const SessionDetail = ({
   isUploading,
   isProcessing,
   elapsedSeconds,
+  processingStep,
   onUpdateSession,
   onDeleteSession,
   onCloseSession,
@@ -17,6 +18,18 @@ export const SessionDetail = ({
   openInEditMode,
   onEditModeUsed,
 }) => {
+  const formatStepName = (step) => {
+    const names = {
+      extracting_audio: 'Extracting audio',
+      preprocessing: 'Preprocessing',
+      transcribing: 'Transcribing',
+      merging: 'Merging',
+      embedding: 'Embedding',
+      analyzing: 'Analyzing',
+    }
+    return names[step] || step
+  }
+
   const [isEditing, setIsEditing] = useState(false)
   const [editTitle, setEditTitle] = useState('')
   const [editYoutubeUrl, setEditYoutubeUrl] = useState('')
@@ -285,7 +298,9 @@ export const SessionDetail = ({
                       disabled={isProcessing}
                     >
                       {isProcessing
-                        ? `Processing... ${formatters.formatTime(elapsedSeconds * 1000)}`
+                        ? (processingStep?.step_number
+                            ? `${formatStepName(processingStep.processing_step)}... (${processingStep.step_number}/${processingStep.total_steps}) ${formatters.formatTime(elapsedSeconds * 1000)}`
+                            : `Queued... ${formatters.formatTime(elapsedSeconds * 1000)}`)
                         : 'Process'}
                     </button>
                   )}

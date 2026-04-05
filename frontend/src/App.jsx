@@ -33,6 +33,7 @@ function App() {
     isUploading,
     isProcessing,
     elapsedSeconds,
+    processingStep,
     loadSessions,
     loadSessionDetails,
     createSession,
@@ -191,6 +192,7 @@ function App() {
               isUploading={isUploading}
               isProcessing={isProcessing}
               elapsedSeconds={elapsedSeconds}
+              processingStep={processingStep}
               onUpdateSession={updateSession}
               onDeleteSession={deleteSession}
               onCloseSession={closeSession}

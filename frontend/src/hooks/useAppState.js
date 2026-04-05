@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import * as api from '../utils/api'
 
 /**
@@ -24,6 +24,12 @@ export const useAppState = () => {
   // Processing timer
   const [elapsedSeconds, setElapsedSeconds] = useState(0)
 
+  // Processing step progress (from polling)
+  const [processingStep, setProcessingStep] = useState(null)
+
+  // Ref for polling interval ID (persists across renders)
+  const pollingIntervalRef = useRef(null)
+
   // Load all sessions on mount
   useEffect(() => {
     loadSessions()
@@ -42,6 +48,70 @@ export const useAppState = () => {
     // Cleanup: clear interval when processing ends or component unmounts
     return () => clearInterval(interval)
   }, [isProcessing])
+
+  // Cleanup polling interval on unmount
+  useEffect(() => {
+    return () => {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current)
+        pollingIntervalRef.current = null
+      }
+    }
+  }, [])
+
+  // Start polling for processing status updates
+  const startPolling = useCallback((targetSessionId) => {
+    // Clear any existing polling interval
+    if (pollingIntervalRef.current) {
+      clearInterval(pollingIntervalRef.current)
+      pollingIntervalRef.current = null
+    }
+
+    setIsProcessing(true)
+
+    pollingIntervalRef.current = setInterval(async () => {
+      try {
+        const statusData = await api.getSessionStatus(targetSessionId)
+        setProcessingStep(statusData)
+
+        if (statusData.status === 'processing') {
+          setSessions(prev => prev.map(s => s.id === targetSessionId ? { ...s, status: 'processing' } : s))
+          setSessionDetails(prev => prev && prev.id === targetSessionId ? { ...prev, status: 'processing' } : prev)
+        }
+
+        if (statusData.status === 'ready') {
+          clearInterval(pollingIntervalRef.current)
+          pollingIntervalRef.current = null
+          setIsProcessing(false)
+          setProcessingStep(null)
+          setStatus('Chunks ready')
+          // Reload session data with chunks
+          const data = await api.getSessionById(targetSessionId)
+          setSessionDetails(data.session)
+          setChunks(data.chunks || [])
+          setAllChunks(data.chunks || [])
+          // Refresh sessions list for updated status badges
+          const sessionsData = await api.getSessions()
+          setSessions(sessionsData)
+        }
+
+        if (statusData.status === 'failed') {
+          clearInterval(pollingIntervalRef.current)
+          pollingIntervalRef.current = null
+          setIsProcessing(false)
+          setProcessingStep(null)
+          setError('Processing failed')
+          setStatus('')
+          // Refresh to show failed status
+          const sessionsData = await api.getSessions()
+          setSessions(sessionsData)
+        }
+      } catch (err) {
+        // Poll errors are transient — don't stop polling on network hiccups
+        console.warn('Status poll error:', err.message)
+      }
+    }, 2000)
+  }, [])
 
   // Session handlers
 
@@ -64,6 +134,10 @@ export const useAppState = () => {
       setAllChunks(data.chunks || [])
       setSessionId(id)
       setStatus('Ready')
+      // Resume polling if session is mid-processing
+      if (data.session.status === 'queued' || data.session.status === 'processing') {
+        startPolling(id)
+      }
     } catch (err) {
       setError(err.message)
       setStatus('')
@@ -124,6 +198,13 @@ export const useAppState = () => {
   }
 
   const closeSession = () => {
+    // Stop polling if we're leaving a processing session
+    if (pollingIntervalRef.current) {
+      clearInterval(pollingIntervalRef.current)
+      pollingIntervalRef.current = null
+    }
+    setIsProcessing(false)
+    setProcessingStep(null)
     setSessionId('')
     setSessionDetails(null)
     setChunks([])
@@ -161,23 +242,17 @@ export const useAppState = () => {
       setError('Create or select a session first.')
       return
     }
-    setIsProcessing(true)
     setError('')
-    setStatus('Processing (transcribe + chunk)...')
-    // Optimistically update session status so it shows "processing" immediately
-    setSessions(prev => prev.map(s => s.id === sessionId ? { ...s, status: 'processing' } : s))
-    setSessionDetails(prev => prev && prev.id === sessionId ? { ...prev, status: 'processing' } : prev)
+    setStatus('Queuing for processing...')
+    // Optimistically update session status so it shows "queued" immediately
+    setSessions(prev => prev.map(s => s.id === sessionId ? { ...s, status: 'queued' } : s))
+    setSessionDetails(prev => prev && prev.id === sessionId ? { ...prev, status: 'queued' } : prev)
     try {
-      const data = await api.processSession(sessionId)
-      setChunks(data.chunks || [])
-      setStatus('Chunks ready')
-      await loadSessionDetails(sessionId)
-      await loadSessions()
+      await api.processSession(sessionId)
+      startPolling(sessionId)
     } catch (err) {
       setError(err.message)
       setStatus('')
-    } finally {
-      setIsProcessing(false)
     }
   }
 
@@ -227,6 +302,7 @@ export const useAppState = () => {
     isUploading,
     isProcessing,
     elapsedSeconds,
+    processingStep,
 
     // Handlers
     loadSessions,

@@ -8,6 +8,7 @@ from fastapi import APIRouter
 
 from app.config import UPLOAD_DIR, AUDIO_DIR
 from app.database import get_conn, put_conn, fetch_session, fetch_chunks
+from app.services.worker import STEP_ORDER, TOTAL_STEPS
 from app.models import (
     SessionCreateRequest,
     SessionUpdateRequest,
@@ -60,6 +61,20 @@ def list_sessions() -> List[SessionResponse]:
     finally:
         put_conn(conn)
     return [SessionResponse(**dict(row)) for row in rows]
+
+
+@router.get("/{session_id}/status")
+def get_session_status(session_id: str) -> Dict:
+    session = fetch_session(session_id)
+    step = session.get("processing_step")
+    step_number = STEP_ORDER.get(step) if step else None
+    total_steps = TOTAL_STEPS if step_number is not None else None
+    return {
+        "status": session.get("status"),
+        "processing_step": step,
+        "step_number": step_number,
+        "total_steps": total_steps,
+    }
 
 
 @router.get("/{session_id}")

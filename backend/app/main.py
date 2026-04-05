@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.database import init_storage
 from app.routers import sessions, chunks, media, settings
+from app.services.worker import recovery_on_startup, start_worker
 
 
 app = FastAPI(title="RECALL.GG", description="Esports comms search MVP")
@@ -21,6 +22,8 @@ app.add_middleware(
 @app.on_event("startup")
 def startup() -> None:
     init_storage()
+    recovery_on_startup()
+    start_worker()
 
 
 @app.get("/health")

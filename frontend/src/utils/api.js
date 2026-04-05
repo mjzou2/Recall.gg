@@ -82,6 +82,11 @@ export const processSession = async (sessionId) => {
   return handleResponse(res)
 }
 
+export const getSessionStatus = async (sessionId) => {
+  const res = await fetch(`${API_BASE}/sessions/${sessionId}/status`)
+  return handleResponse(res)
+}
+
 export const searchChunks = async (
   sessionId,
   { query, limit = 50, start_time_ms, end_time_ms, is_bookmarked }

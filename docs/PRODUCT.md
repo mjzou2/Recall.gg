@@ -107,7 +107,7 @@ Most VOD tools parse **game events** (kills, objectives, gold). RECALL.GG parses
 
 ### Constraints
 - **No YouTube download** - User provides YouTube URL for playback, uploads audio separately
-- **Synchronous processing** - No task queue yet, transcription blocks until complete
+- **Sequential processing** - Async job queue (Postgres-backed worker thread), but only one session processes at a time
 - **Single user** - No authentication or multi-user support
 
 ---
@@ -183,7 +183,7 @@ Most VOD tools parse **game events** (kills, objectives, gold). RECALL.GG parses
 - **Hosted option** - Cloud transcription for users without GPUs
 - **Hybrid mode** - Users choose local (free, private) or cloud (paid, convenient)
 - **BYO API key** - Users provide their own Whisper API key for cloud processing
-- **Async task queue** - Celery + Redis for non-blocking transcription
+- ~~**Async task queue**~~ (implemented: Postgres-backed worker thread with step tracking; Celery + Redis for scale later)
 
 ### Advanced Features
 - **Fine-tuned models** - League-specific Whisper trained on labeled comms
@@ -268,9 +268,9 @@ Most VOD tools parse **game events** (kills, objectives, gold). RECALL.GG parses
 - Fine-tuning could reach 80-90% but requires significant data collection effort
 
 **Architecture:**
-- Synchronous processing blocks the API (5 min per hour of audio)
+- Async job queue (Postgres-backed worker thread) — non-blocking, but sequential (one session at a time)
+- Processing progress tracked via `processing_step` column (6 steps: extracting_audio → analyzing)
 - No concurrent session processing
-- Processing progress shown as elapsed timer only (no % complete)
 
 **Scope:**
 - YouTube-only for video playback (no local video player yet)

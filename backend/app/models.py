@@ -27,6 +27,7 @@ class SessionResponse(BaseModel):
     duration_ms: Optional[int] = None
     notes: Optional[str] = None
     speaker_names: Optional[dict] = None
+    processing_step: Optional[str] = None
 
 class ChunkResponse(BaseModel):
     id: str

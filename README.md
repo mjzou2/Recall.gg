@@ -177,7 +177,7 @@ Frontend: http://localhost:5173
 
 1. **Create a session** - Give it a title and YouTube URL for playback
 2. **Upload audio/video** - Upload your scrim recording
-3. **Process** - Click "Process" to start transcription (~5 min per hour of audio)
+3. **Process** - Click "Process" to queue transcription (~5 min per hour of audio, runs in background)
 4. **Explore** - Switch to Explore tab to view the searchable transcript
 5. **Search** - Enter keywords like "Baron", "dive mid", "reset"
 6. **Filter by time** - Enter start/end time (e.g., "5:00" to "10:00") to narrow results
@@ -228,7 +228,7 @@ vodcomms/
 │   │   ├── models.py        # Pydantic request/response schemas
 │   │   ├── database.py      # Postgres connection pool and queries
 │   │   ├── routers/         # API endpoints (sessions, chunks, media)
-│   │   └── services/        # Business logic (audio, transcription, text_processing, embedding, llm)
+│   │   └── services/        # Business logic (audio, transcription, text_processing, embedding, llm, worker)
 │   ├── term_bank.json       # League-specific vocabulary (305 terms)
 │   ├── scripts/             # Utility scripts (backfill_embeddings)
 │   ├── requirements.txt     # Python dependencies
