@@ -8,15 +8,16 @@ from fastapi import HTTPException
 from app.config import DATA_DIR, PG_HOST, PG_PORT, PG_USER, PG_PASSWORD, PG_DBNAME
 
 
-# Module-level connection pool (initialized in init_storage)
-_pool: psycopg2.pool.SimpleConnectionPool = None
+# Module-level connection pool (ThreadedConnectionPool is thread-safe,
+# needed because the worker thread and uvicorn threads access it concurrently)
+_pool: psycopg2.pool.ThreadedConnectionPool = None
 
 
-def get_pool() -> psycopg2.pool.SimpleConnectionPool:
+def get_pool() -> psycopg2.pool.ThreadedConnectionPool:
     """Return the module-level connection pool, creating it if needed."""
     global _pool
     if _pool is None:
-        _pool = psycopg2.pool.SimpleConnectionPool(
+        _pool = psycopg2.pool.ThreadedConnectionPool(
             minconn=1,
             maxconn=10,
             host=PG_HOST,
