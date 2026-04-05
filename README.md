@@ -198,9 +198,9 @@ Frontend: http://localhost:5173
 ## Transcription Accuracy
 
 **Current performance (large-v3/int8 + term bank + fuzzy correction):**
-- ~60% base accuracy on League-specific terms, targeting 70-80% with post-processing
+- ~60% base accuracy on League-specific terms, improved to 70-80% with post-processing
 - ~5 minutes processing per hour of audio (GPU)
-- 19 regex rules auto-correct common mishears (harold→herald, word→ward, apostrophe champions, etc.)
+- Regex rules auto-correct common mishears (harold→herald, word→ward, apostrophe champions, etc.)
 - RapidFuzz fuzzy matching corrects close-spelling errors against term bank (score_cutoff=82)
 - Light audio denoising via ffmpeg (highpass + lowpass + noise reduction)
 - Demucs vocal isolation (htdemucs) + ffmpeg loudnorm volume normalization (skippable via DISABLE_AUDIO_PREPROCESSING=1)
@@ -253,7 +253,7 @@ vodcomms/
 
 **MVP 1.0 (✅ Complete):** Full local tool with search, transcription, time filtering, bookmarks, annotations, and LLM analysis
 **MVP 1.5 (Complete, unreleased):** Speaker assignment (done), full-width Explore view (done), speaker filtering, intensity detection, session comparison
-**MVP 2.0 (Release Soon):** Production SaaS with teams, cloud hosting, fine-tuned models, live transcription
+**MVP 2.0 (Release Soon):** Production SaaS with teams, cloud hosting, higher accuracy, and many more features
 
 See [PRODUCT.md](docs/PRODUCT.md) for detailed roadmap and feature priorities.
 
